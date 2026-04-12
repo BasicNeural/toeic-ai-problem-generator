@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Word, VocabQuiz } from '../types';
 import { schedule, createInitialFSRS } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
 import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
 import { getDailyResetTime } from '../lib/time';
 
@@ -22,7 +22,18 @@ export function useMemorize(words: Word[]) {
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
   const [swipeRatings, setSwipeRatings] = useState<Record<string, { rating: FSRSRating, label: string }>>({});
 
-  const start = () => {
+  useEffect(() => {
+    getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'))
+      .then(snapshot => {
+        if (snapshot.empty) return;
+        const cached: Record<string, VocabQuiz> = {};
+        snapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
+        setQuizzes(cached);
+      })
+      .catch(() => {});
+  }, []);
+
+  const start = async () => {
     if (queue.length > 0 && !isComplete && phase !== 'results') {
       setCardStartTime(Date.now());
       return;
@@ -77,13 +88,24 @@ export function useMemorize(words: Word[]) {
     setCardStartTime(Date.now());
     setQuizzes({});
     setSwipeRatings({});
-    setIsGeneratingQuizzes(true);
 
     if (newSessionWords.length > 0) {
+      const cachedSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
+      if (!cachedSnapshot.empty) {
+        const cached: Record<string, VocabQuiz> = {};
+        cachedSnapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
+        const hasAll = newSessionWords.every(w => cached[w.id]);
+        if (hasAll) {
+          setQuizzes(cached);
+          return;
+        }
+      }
+
+      setIsGeneratingQuizzes(true);
       const targetTerms = newSessionWords.map(w => w.term);
       const knownTerms = words.filter(w => w.memorized).map(w => w.term);
       GeminiService.generateVocabQuizzes(targetTerms, knownTerms)
-        .then(quizList => {
+        .then(async quizList => {
           const quizMap: Record<string, VocabQuiz> = {};
           quizList.forEach(q => {
             const word = newSessionWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
@@ -92,11 +114,19 @@ export function useMemorize(words: Word[]) {
             }
           });
           setQuizzes(quizMap);
+
+          const batch = writeBatch(getDb());
+          const oldSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
+          oldSnapshot.forEach(d => batch.delete(d.ref));
+          for (const [wordId, quiz] of Object.entries(quizMap)) {
+            batch.set(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId), quiz);
+          }
+          batch.commit().catch(err => {
+            handleFirestoreError(err, OperationType.WRITE, `users/${USER_ID}/memorizeQuizzes`);
+          });
         })
         .catch(err => console.error("Failed to generate quizzes", err))
         .finally(() => setIsGeneratingQuizzes(false));
-    } else {
-      setIsGeneratingQuizzes(false);
     }
   };
 
@@ -188,6 +218,10 @@ export function useMemorize(words: Word[]) {
       handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
     });
 
+    deleteDoc(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId)).catch(err => {
+      handleFirestoreError(err, OperationType.DELETE, `users/${USER_ID}/memorizeQuizzes/${wordId}`);
+    });
+
     setSessionResults(prev => {
       if (prev.some(w => w.id === updatedWord.id)) return prev;
       return [...prev, updatedWord];
@@ -199,6 +233,16 @@ export function useMemorize(words: Word[]) {
     if (nextQuizQueue.length === 0) {
       setIsComplete(true);
       setPhase('results');
+      getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'))
+        .then(snapshot => {
+          if (snapshot.empty) return;
+          const batch = writeBatch(getDb());
+          snapshot.forEach(d => batch.delete(d.ref));
+          return batch.commit();
+        })
+        .catch(err => {
+          handleFirestoreError(err, OperationType.DELETE, `users/${USER_ID}/memorizeQuizzes`);
+        });
     }
   };
 
