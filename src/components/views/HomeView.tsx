@@ -148,16 +148,17 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
                   )}
                 >
                   <span className={cn(
-                    "text-xs font-bold",
+                    "text-xs font-bold leading-none",
                     hasActivity ? "text-blue-700" : "text-slate-400"
                   )}>
                     {format(dayData.date, 'd')}
                   </span>
-                  {hasActivity && (
-                    <span className="text-[8px] font-bold text-blue-500 leading-none mt-0.5">
-                      {dayData.count}
-                    </span>
-                  )}
+                  <span className={cn(
+                    "text-[8px] font-bold leading-none mt-1",
+                    hasActivity ? "text-blue-500" : "invisible"
+                  )}>
+                    {hasActivity ? dayData.count : '\u00A0'}
+                  </span>
                 </div>
               );
             })}
