@@ -206,14 +206,14 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             <h3 className="font-bold text-slate-900 text-lg">
               {activeSessionCount > 0 
                 ? '학습 이어서 하기' 
-                : (hasScheduledStudy ? '단어 암기하기' : '추가로 더 학습하기')}
+                : (hasScheduledStudy ? '단어 암기하기' : '새로운 단어 더 학습하기')}
             </h3>
             <p className="text-sm text-slate-500">
               {activeSessionCount > 0 
                 ? `현재 세션에 ${activeSessionCount}단어 남음` 
                 : (hasScheduledStudy 
                     ? `신규 ${newWordsToLearnToday}개, 복습 ${dueWordsCount}개` 
-                    : '외운 단어를 다시 복습합니다')}
+                    : '새 단어와 복습을 함께 진행합니다')}
             </p>
           </div>
           <div className={cn(

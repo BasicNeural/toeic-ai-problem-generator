@@ -38,7 +38,7 @@ export function useMemorize(words: Word[]) {
 
     let availableNew = Math.min(newWords.length, remainingNewWords);
     
-    let takeNew = Math.min(availableNew, 5);
+    let takeNew = Math.min(availableNew, 2);
     let takeDue = Math.min(dueWords.length, 10 - takeNew);
 
     if (takeNew + takeDue < 10 && availableNew > takeNew) {
@@ -55,12 +55,13 @@ export function useMemorize(words: Word[]) {
     ];
 
     if (sessionWordsList.length === 0) {
+      const extraNew = words.filter(w => !w.fsrs).sort(() => Math.random() - 0.5).slice(0, 2);
       const reviewable = words
         .filter(w => w.fsrs && w.fsrs.state > 0)
         .sort(() => Math.random() - 0.5)
-        .slice(0, 10);
-      if (reviewable.length === 0) return;
-      sessionWordsList = reviewable;
+        .slice(0, 10 - extraNew.length);
+      sessionWordsList = [...extraNew, ...reviewable];
+      if (sessionWordsList.length === 0) return;
     }
 
     const newSessionWords = sessionWordsList.sort(() => Math.random() - 0.5).map(w => ({
