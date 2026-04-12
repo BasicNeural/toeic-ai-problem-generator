@@ -32,14 +32,13 @@ export function parseFirebaseInput(input: string): Record<string, string> | null
     return JSON.parse(cleaned);
   } catch { /* still not JSON, convert JS object literal */ }
 
-  cleaned = cleaned.replace(/(\w+)\s*:/g, (_match, key) => `"${key}":`);
-  cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
+  const entries: Record<string, string> = {};
+  const kvRegex = /(\w+)\s*:\s*(?:"([^"]*)"|'([^']*)')/g;
+  let m;
+  while ((m = kvRegex.exec(cleaned)) !== null) {
+    entries[m[1]] = m[2] ?? m[3];
   }
+  return Object.keys(entries).length > 0 ? entries : null;
 }
 
 export const ConfigManager = {
