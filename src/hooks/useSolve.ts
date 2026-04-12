@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Problem, Word } from '../types';
 import { GeminiService } from '../services/geminiService';
 import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, limit } from 'firebase/firestore';
 
 export function useSolve(
   words: Word[],
@@ -29,7 +29,6 @@ export function useSolve(
     const q = query(
       collection(getDb(), 'users', USER_ID, 'problems'),
       where('status', '==', 'pending'),
-      orderBy('createdAt', 'asc'),
       limit(5)
     );
 
@@ -38,6 +37,7 @@ export function useSolve(
       snapshot.forEach(doc => {
         problems.push(doc.data() as Problem);
       });
+      problems.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
       setPrefetchedProblems(problems);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${USER_ID}/problems`);
