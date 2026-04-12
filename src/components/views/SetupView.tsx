@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Settings, Key, Database, ChevronRight, AlertCircle } from 'lucide-react';
+import { Settings, Key, Database, ChevronRight, AlertCircle, Shield, Copy, Check } from 'lucide-react';
 import { ConfigManager, FirebaseAppConfig, parseFirebaseInput } from '../../lib/configManager';
 import { ApiKeyManager } from '../../lib/apiKeyManager';
 
@@ -8,24 +8,38 @@ interface SetupViewProps {
   onComplete: () => void;
 }
 
+const FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/default/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}`;
+
 const FIREBASE_FIELDS: { key: keyof FirebaseAppConfig; label: string; placeholder: string; required: boolean }[] = [
   { key: 'projectId', label: 'Project ID', placeholder: 'my-project-12345', required: true },
   { key: 'appId', label: 'App ID', placeholder: '1:123456789:web:abc123', required: true },
   { key: 'apiKey', label: 'API Key', placeholder: 'AIzaSy...', required: true },
   { key: 'authDomain', label: 'Auth Domain', placeholder: 'my-project.firebaseapp.com', required: true },
-  { key: 'firestoreDatabaseId', label: 'Firestore Database ID', placeholder: '비워두면 (default) 사용', required: false },
+  { key: 'firestoreDatabaseId', label: 'Firestore Database ID', placeholder: '(default)', required: false },
   { key: 'storageBucket', label: 'Storage Bucket', placeholder: 'my-project.appspot.com', required: true },
   { key: 'messagingSenderId', label: 'Messaging Sender ID', placeholder: '123456789', required: true },
   { key: 'measurementId', label: 'Measurement ID', placeholder: 'G-XXXXXXXXXX', required: false },
 ];
 
 export function SetupView({ onComplete }: SetupViewProps) {
-  const [step, setStep] = useState<'firebase' | 'gemini'>('firebase');
+  const [step, setStep] = useState<'firebase' | 'rules' | 'gemini'>('firebase');
   const [firebaseConfig, setFirebaseConfig] = useState<Record<string, string>>({});
   const [geminiKey, setGeminiKey] = useState('');
   const [configInput, setConfigInput] = useState('');
   const [parseError, setParseError] = useState('');
   const [inputMode, setInputMode] = useState<'paste' | 'fields'>('paste');
+  const [rulesCopied, setRulesCopied] = useState(false);
 
   const handleParse = () => {
     const parsed = parseFirebaseInput(configInput);
@@ -51,7 +65,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
   const handleFirebaseSubmit = () => {
     if (!isFirebaseValid) return;
     ConfigManager.setFirebaseConfig(firebaseConfig as unknown as FirebaseAppConfig);
-    setStep('gemini');
+    setStep('rules');
   };
 
   const handleGeminiSubmit = () => {
@@ -75,7 +89,8 @@ export function SetupView({ onComplete }: SetupViewProps) {
       </div>
 
       <div className="flex gap-2">
-        <div className={`flex-1 h-1.5 rounded-full transition-colors ${step === 'firebase' || step === 'gemini' ? 'bg-blue-600' : 'bg-slate-200'}`} />
+        <div className={`flex-1 h-1.5 rounded-full transition-colors ${['firebase', 'rules', 'gemini'].includes(step) ? 'bg-blue-600' : 'bg-slate-200'}`} />
+        <div className={`flex-1 h-1.5 rounded-full transition-colors ${step === 'rules' || step === 'gemini' ? 'bg-blue-600' : 'bg-slate-200'}`} />
         <div className={`flex-1 h-1.5 rounded-full transition-colors ${step === 'gemini' ? 'bg-blue-600' : 'bg-slate-200'}`} />
       </div>
 
@@ -160,6 +175,59 @@ export function SetupView({ onComplete }: SetupViewProps) {
         </motion.div>
       )}
 
+      {step === 'rules' && (
+        <motion.div
+          key="rules"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-3 text-amber-600">
+            <Shield className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Firestore 보안 규칙</span>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Firebase 콘솔의 <strong>Firestore Database &gt; 규칙</strong> 탭에서 아래 규칙을 붙여넣고 <strong>게시</strong>하세요.
+          </p>
+
+          <div className="relative">
+            <pre className="bg-slate-900 text-slate-100 rounded-xl px-4 py-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">{FIRESTORE_RULES}</pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(FIRESTORE_RULES);
+                setRulesCopied(true);
+                setTimeout(() => setRulesCopied(false), 2000);
+              }}
+              className="absolute top-2.5 right-2.5 p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+            >
+              {rulesCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
+            </button>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <p className="text-xs text-amber-800 leading-relaxed">
+              <strong>참고:</strong> 이 규칙은 인증 없이 <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px] font-mono">users/default</code> 경로에 대한 읽기/쓰기를 허용합니다. 개인 Firebase 프로젝트에서만 사용하세요.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStep('firebase')}
+              className="py-3 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all text-sm"
+            >
+              이전
+            </button>
+            <button
+              onClick={() => setStep('gemini')}
+              className="flex-1 py-3 bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-100 hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+            >
+              다음 <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {step === 'gemini' && (
         <motion.div
           key="gemini"
@@ -186,7 +254,7 @@ export function SetupView({ onComplete }: SetupViewProps) {
 
           <div className="flex gap-2">
             <button
-              onClick={() => setStep('firebase')}
+              onClick={() => setStep('rules')}
               className="py-3 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all text-sm"
             >
               이전
