@@ -22,7 +22,11 @@ async function executeWithRetry<T>(operation: (ai: GoogleGenAI) => Promise<T>): 
       if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
         console.warn(`API Key rate limited. Rotating key... (Attempt ${attempt + 1}/${maxAttempts})`);
         ApiKeyManager.rotateKey();
-      } else {
+      } else if (error?.status === 503 || error?.message?.includes('503')) {
+        console.warn(`Server unavailable. Waiting... (Attempt ${attempt + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** (attempt + 1))));
+      }
+      else {
         throw error;
       }
     }
@@ -126,8 +130,8 @@ export class GeminiService {
 
   private static async generate(words: string[], targetGrammarCategories: string[]): Promise<Problem> {
     const wordList = words.length > 0 ? words.join(', ') : 'any TOEIC vocabulary';
-    const targetListStr = targetGrammarCategories.length > 0 
-      ? JSON.stringify(targetGrammarCategories) 
+    const targetListStr = targetGrammarCategories.length > 0
+      ? JSON.stringify(targetGrammarCategories)
       : '["시제", "분사", "관계사", "접속사", "전치사", "수동태", "가정법", "동명사"]';
 
     const response = await executeWithRetry(ai => ai.models.generateContent({
@@ -166,18 +170,18 @@ export class GeminiService {
   }
 
   static async runWorkflow(
-    words: string[], 
+    words: string[],
     targetGrammarCategories: string[],
     onLog: (log: AgentLog) => void
   ): Promise<WorkflowResult> {
     const logs: AgentLog[] = [];
     const addLog = (agent: AgentLog['agent'], message: string, status: AgentLog['status']) => {
-      const log: AgentLog = { 
-        id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
-        agent, 
-        message, 
-        timestamp: Date.now(), 
-        status 
+      const log: AgentLog = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        agent,
+        message,
+        timestamp: Date.now(),
+        status
       };
       logs.push(log);
       onLog(log);
@@ -201,7 +205,7 @@ export class GeminiService {
         break;
       } else {
         addLog('Verifier', `Verification failed: ${verification.feedback}`, 'warning');
-        
+
         if (iterations < maxIterations) {
           addLog('Corrector', 'Correcting problem based on feedback...', 'info');
           currentProblem = await this.correct(currentProblem, verification.feedback);
