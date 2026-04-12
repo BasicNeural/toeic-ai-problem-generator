@@ -1,0 +1,5 @@
+{
+  "name": "TOEIC AI Problem Generator",
+  "description": "Multi-agent AI system that generates and refines TOEIC Part 5 grammar problems using Gemini.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string;
+    }
+
+    function isValidWord(data) {
+      return data.keys().hasAll(['id', 'term', 'meanings', 'memorized', 'userId']) &&
+             data.id is string &&
+             data.term is string &&
+             data.meanings is list &&
+             data.memorized is bool &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidGrammarStats(data) {
+      return data is map;
+    }
+
+    function isValidProblem(data) {
+      return data.keys().hasAll(['id', 'question', 'answer', 'grammar']) &&
+             data.id is string &&
+             data.question is string &&
+             data.answer is string &&
+             data.grammar is string;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      
+      match /words/{wordId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidWord(request.resource.data);
+        allow update: if isOwner(userId) && isValidWord(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+      
+      match /grammarStats/{statId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGrammarStats(request.resource.data);
+        allow update: if isOwner(userId) && isValidGrammarStats(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /problems/{problemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidProblem(request.resource.data);
+        allow update: if isOwner(userId) && isValidProblem(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

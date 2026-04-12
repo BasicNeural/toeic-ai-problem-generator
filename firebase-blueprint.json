@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Problem": {
+      "title": "Problem",
+      "description": "TOEIC Part 5 problem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "solved"] },
+        "createdAt": { "type": "number" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "grammar": { "type": "string" },
+        "difficulty": { "type": "number" }
+      },
+      "required": ["id", "question", "answer", "grammar"]
+    },
+    "Meaning": {
+      "title": "Meaning",
+      "description": "Word class and definition",
+      "type": "object",
+      "properties": {
+        "wordClass": { "type": "string" },
+        "definition": { "type": "string" }
+      },
+      "required": ["wordClass", "definition"]
+    },
+    "FSRSState": {
+      "title": "FSRSState",
+      "description": "Free Spaced Repetition Scheduler state",
+      "type": "object",
+      "properties": {
+        "due": { "type": "string", "format": "date-time" },
+        "stability": { "type": "number" },
+        "difficulty": { "type": "number" },
+        "elapsed_days": { "type": "number" },
+        "scheduled_days": { "type": "number" },
+        "reps": { "type": "number" },
+        "lapses": { "type": "number" },
+        "state": { "type": "number" },
+        "last_review": { "type": "string", "format": "date-time" }
+      },
+      "required": ["due", "stability", "difficulty", "elapsed_days", "scheduled_days", "reps", "lapses", "state"]
+    },
+    "Word": {
+      "title": "Word",
+      "description": "Vocabulary item with FSRS state",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "term": { "type": "string" },
+        "meanings": {
+          "type": "array",
+          "items": { "$ref": "Meaning" }
+        },
+        "memorized": { "type": "boolean" },
+        "fsrs": { "$ref": "FSRSState" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "introducedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "term", "meanings", "memorized", "userId"]
+    },
+    "GrammarStats": {
+      "title": "GrammarStats",
+      "description": "User's grammar mastery scores",
+      "type": "object",
+      "properties": {
+        "시제": { "type": "number" },
+        "분사": { "type": "number" },
+        "관계사": { "type": "number" },
+        "접속사": { "type": "number" },
+        "전치사": { "type": "number" },
+        "수동태": { "type": "number" },
+        "가정법": { "type": "number" },
+        "동명사": { "type": "number" },
+        "기타": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/words/{wordId}": {
+      "schema": "Word",
+      "description": "User's vocabulary list"
+    },
+    "/users/{userId}/grammarStats/{statId}": {
+      "schema": "GrammarStats",
+      "description": "User's grammar mastery stats"
+    },
+    "/users/{userId}/problems/{problemId}": {
+      "schema": "Problem",
+      "description": "User's pre-generated TOEIC problems"
+    }
+  }
+}
