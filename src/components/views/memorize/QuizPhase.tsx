@@ -52,11 +52,11 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
         <div className="text-center space-y-2">
           <h2 className="text-xl font-bold text-slate-900">퀴즈를 생성할 수 없습니다</h2>
           <p className="text-slate-500 text-sm">
-            AI 퀴즈 생성 한도를 초과했거나 네트워크 오류가 발생했습니다.<br/>
+            AI 퀴즈 생성 한도를 초과했거나 네트워크 오류가 발생했습니다.<br />
             이 단어는 퀴즈 없이 바로 복습 결과에 반영됩니다.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => onQuizAnswer(currentQuizWord!.id, true)}
           className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
         >
@@ -82,6 +82,16 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
           <p className="text-lg font-medium text-slate-800 leading-relaxed">
             {currentQuiz.question}
           </p>
+          {currentQuiz.vocabulary && currentQuiz.vocabulary.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-4 border-t border-slate-50">
+              {currentQuiz.vocabulary.map((vocab, idx) => (
+                <div key={idx} className="flex items-baseline gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">{vocab.word}</span>
+                  <span className="text-[10px] text-slate-400">{vocab.meaning}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -91,7 +101,7 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
             const showStatus = showExplanation;
 
             let buttonClass = "w-full p-4 rounded-2xl border-2 text-left font-medium transition-all ";
-            
+
             if (!showStatus) {
               buttonClass += "border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50 text-slate-700";
             } else {
@@ -127,8 +137,8 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
             >
               <div className={cn(
                 "p-4 rounded-2xl text-sm font-medium",
-                selectedOption === currentQuiz.answer 
-                  ? "bg-emerald-50 text-emerald-800" 
+                selectedOption === currentQuiz.answer
+                  ? "bg-emerald-50 text-emerald-800"
                   : "bg-rose-50 text-rose-800"
               )}>
                 {selectedOption === currentQuiz.answer ? '정답입니다! 🎉' : '틀렸습니다. 🥲'}

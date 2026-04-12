@@ -1,15 +1,15 @@
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  CheckCircle2, 
-  Brain, 
-  Sparkles, 
-  Flame, 
+import {
+  BookOpen,
+  CheckCircle2,
+  Brain,
+  Sparkles,
+  Flame,
   Settings,
   Calendar as CalendarIcon
 } from 'lucide-react';
-import { 
+import {
   Radar,
   RadarChart,
   PolarGrid,
@@ -36,7 +36,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
 
   const actuallyMemorizedWords = words.filter(w => w.memorized && w.lastRating !== 'Again');
   const hasMemorizedWords = actuallyMemorizedWords.length > 0;
-  
+
   const resetTime = getDailyResetTime();
   const introducedTodayCount = words.filter(w => w.introducedAt && new Date(w.introducedAt).getTime() >= resetTime).length;
   const remainingNewWords = Math.max(0, 10 - introducedTodayCount);
@@ -69,7 +69,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -83,8 +83,8 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
           <h1 className="text-3xl font-bold text-slate-900">토익 마스터</h1>
           <p className="text-slate-500 text-sm">AI 기반 단어 & 문법 학습</p>
         </div>
-        
-        <button 
+
+        <button
           onClick={onOpenSettings}
           className="p-2 bg-white rounded-xl border border-slate-100 shadow-sm hover:bg-slate-50 transition-all"
         >
@@ -101,7 +101,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
           <div className="text-3xl font-bold text-slate-900">{totalLearningDays}일</div>
           <div className="text-xs text-slate-400">꾸준히 학습 중!</div>
         </div>
-        <button 
+        <button
           onClick={onOpenMemorizedList}
           className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-1 text-left hover:shadow-md hover:border-blue-200 transition-all"
         >
@@ -114,6 +114,77 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
         </button>
       </div>
 
+      <div className="space-y-4">
+        <button
+          onClick={handleStartMemorize}
+          disabled={!canStudy}
+          className={cn(
+            "w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all text-left flex items-center justify-between",
+            canStudy ? "hover:shadow-md cursor-pointer" : "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-lg">
+              {activeSessionCount > 0
+                ? '학습 이어서 하기'
+                : (hasScheduledStudy ? '단어 암기하기' : '새로운 단어 더 학습하기')}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {activeSessionCount > 0
+                ? `현재 세션에 ${activeSessionCount}단어 남음`
+                : (hasScheduledStudy
+                  ? `신규 ${newWordsToLearnToday}개, 복습 ${dueWordsCount}개`
+                  : '새 단어와 복습을 함께 진행합니다')}
+            </p>
+          </div>
+          <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
+            canStudy ? "bg-blue-50 group-hover:bg-blue-600" : "bg-slate-100"
+          )}>
+            <Brain className={cn(
+              "w-6 h-6 transition-colors",
+              canStudy ? "text-blue-600 group-hover:text-white" : "text-slate-400"
+            )} />
+          </div>
+        </button>
+
+        <button
+          onClick={handleStartVocabQuiz}
+          disabled={!hasMemorizedWords}
+          className={cn(
+            "w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all text-left flex items-center justify-between",
+            hasMemorizedWords ? "hover:shadow-md cursor-pointer" : "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-lg">단어 퀴즈</h3>
+            <p className="text-sm text-slate-500">외운 단어 테스트하기</p>
+          </div>
+          <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
+            hasMemorizedWords ? "bg-indigo-50 group-hover:bg-indigo-600" : "bg-slate-100"
+          )}>
+            <Sparkles className={cn(
+              "w-6 h-6 transition-colors",
+              hasMemorizedWords ? "text-indigo-600 group-hover:text-white" : "text-slate-400"
+            )} />
+          </div>
+        </button>
+
+        <button
+          onClick={handleStartSolve}
+          className="w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-lg">문제 풀기</h3>
+            <p className="text-sm text-slate-500">외운 단어로 파트 5 문제 풀기</p>
+          </div>
+          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
+            <Sparkles className="w-6 h-6 text-emerald-600 group-hover:text-white transition-colors" />
+          </div>
+        </button>
+      </div>
+
       <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-slate-900">
@@ -122,7 +193,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentMonthStr}</span>
         </div>
-        
+
         <div className="w-full">
           <div className="grid grid-cols-7 gap-1 mb-2">
             {['일', '월', '화', '수', '목', '금', '토'].map(day => (
@@ -139,8 +210,8 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
               const hasActivity = dayData.count > 0;
               const today = isToday(dayData.date);
               return (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={cn(
                     "aspect-square rounded-xl relative transition-all",
                     hasActivity ? "bg-blue-50 border border-blue-100" : "bg-slate-50 border border-transparent",
@@ -179,10 +250,10 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
               <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
               <Radar name="Mastery" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.2} />
-              <Tooltip 
-                contentStyle={{ 
-                  borderRadius: '12px', 
-                  border: 'none', 
+              <Tooltip
+                contentStyle={{
+                  borderRadius: '12px',
+                  border: 'none',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                   fontSize: '10px',
                   fontWeight: 'bold'
@@ -191,77 +262,6 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             </RadarChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <button 
-          onClick={handleStartMemorize}
-          disabled={!canStudy}
-          className={cn(
-            "w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all text-left flex items-center justify-between",
-            canStudy ? "hover:shadow-md cursor-pointer" : "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-900 text-lg">
-              {activeSessionCount > 0 
-                ? '학습 이어서 하기' 
-                : (hasScheduledStudy ? '단어 암기하기' : '새로운 단어 더 학습하기')}
-            </h3>
-            <p className="text-sm text-slate-500">
-              {activeSessionCount > 0 
-                ? `현재 세션에 ${activeSessionCount}단어 남음` 
-                : (hasScheduledStudy 
-                    ? `신규 ${newWordsToLearnToday}개, 복습 ${dueWordsCount}개` 
-                    : '새 단어와 복습을 함께 진행합니다')}
-            </p>
-          </div>
-          <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-            canStudy ? "bg-blue-50 group-hover:bg-blue-600" : "bg-slate-100"
-          )}>
-            <Brain className={cn(
-              "w-6 h-6 transition-colors",
-              canStudy ? "text-blue-600 group-hover:text-white" : "text-slate-400"
-            )} />
-          </div>
-        </button>
-
-        <button 
-          onClick={handleStartVocabQuiz}
-          disabled={!hasMemorizedWords}
-          className={cn(
-            "w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm transition-all text-left flex items-center justify-between",
-            hasMemorizedWords ? "hover:shadow-md cursor-pointer" : "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-900 text-lg">단어 퀴즈</h3>
-            <p className="text-sm text-slate-500">외운 단어 테스트하기</p>
-          </div>
-          <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-            hasMemorizedWords ? "bg-indigo-50 group-hover:bg-indigo-600" : "bg-slate-100"
-          )}>
-            <Sparkles className={cn(
-              "w-6 h-6 transition-colors",
-              hasMemorizedWords ? "text-indigo-600 group-hover:text-white" : "text-slate-400"
-            )} />
-          </div>
-        </button>
-
-        <button 
-          onClick={handleStartSolve}
-          className="w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-900 text-lg">문제 풀기</h3>
-            <p className="text-sm text-slate-500">외운 단어로 파트 5 문제 풀기</p>
-          </div>
-          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
-            <Sparkles className="w-6 h-6 text-emerald-600 group-hover:text-white transition-colors" />
-          </div>
-        </button>
       </div>
     </motion.div>
   );
