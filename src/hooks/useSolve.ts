@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Problem, Word } from '../types';
 import { GeminiService } from '../services/geminiService';
-import { db, handleFirestoreError, OperationType, FirebaseUser } from '../firebase';
+import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 
 export function useSolve(
   words: Word[], 
   updateGrammarStat: (grammar: string, isCorrect: boolean, difficulty: number) => void,
-  grammarStats: { subject: string; A: number; fullMark: number }[],
-  user: FirebaseUser | null
+  grammarStats: { subject: string; A: number; fullMark: number }[]
 ) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<Problem | null>(null);
@@ -27,10 +26,8 @@ export function useSolve(
   }, [words, grammarStats]);
 
   useEffect(() => {
-    if (!user) return;
-    
     const q = query(
-      collection(db, 'users', user.uid, 'problems'),
+      collection(db, 'users', USER_ID, 'problems'),
       where('status', '==', 'pending'),
       orderBy('createdAt', 'asc'),
       limit(5)
@@ -43,11 +40,11 @@ export function useSolve(
       });
       setPrefetchedProblems(problems);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}/problems`);
+      handleFirestoreError(error, OperationType.GET, `users/${USER_ID}/problems`);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, []);
 
   const fetchProblem = useCallback(async () => {
     const currentWords = wordsRef.current;
@@ -61,7 +58,6 @@ export function useSolve(
 
     const { problem } = await GeminiService.runWorkflow(selectedWords, targetGrammarCategories, () => {});
     
-    // Add ID and metadata
     const problemWithMeta: Problem = {
       ...problem,
       id: `prob-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -69,35 +65,32 @@ export function useSolve(
       createdAt: Date.now()
     };
 
-    if (user) {
-      try {
-        await setDoc(doc(db, 'users', user.uid, 'problems', problemWithMeta.id!), problemWithMeta);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/problems/${problemWithMeta.id}`);
-      }
+    try {
+      await setDoc(doc(db, 'users', USER_ID, 'problems', problemWithMeta.id!), problemWithMeta);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${USER_ID}/problems/${problemWithMeta.id}`);
     }
 
     return problemWithMeta;
-  }, [user]);
+  }, []);
 
   const prefetch = useCallback(async () => {
-    if (isPrefetching.current || prefetchedProblems.length >= 2 || !user) return;
+    if (isPrefetching.current || prefetchedProblems.length >= 2) return;
     isPrefetching.current = true;
     try {
       await fetchProblem();
-      // We don't need to manually update state here because onSnapshot will handle it
     } catch (error) {
       console.error('Prefetch failed:', error);
     } finally {
       isPrefetching.current = false;
     }
-  }, [prefetchedProblems.length, fetchProblem, user]);
+  }, [prefetchedProblems.length, fetchProblem]);
 
   useEffect(() => {
-    if (user && prefetchedProblems.length < 2) {
+    if (prefetchedProblems.length < 2) {
       prefetch();
     }
-  }, [prefetchedProblems.length, prefetch, user]);
+  }, [prefetchedProblems.length, prefetch]);
 
   const start = () => {
     if (!result) {
@@ -114,12 +107,11 @@ export function useSolve(
       const nextProb = prefetchedProblems[0];
       setResult(nextProb);
       
-      // Mark as solved in Firestore so it's removed from the pending queue
-      if (user && nextProb.id) {
+      if (nextProb.id) {
         try {
-          await deleteDoc(doc(db, 'users', user.uid, 'problems', nextProb.id));
+          await deleteDoc(doc(db, 'users', USER_ID, 'problems', nextProb.id));
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/problems/${nextProb.id}`);
+          handleFirestoreError(error, OperationType.DELETE, `users/${USER_ID}/problems/${nextProb.id}`);
         }
       }
     } else {
@@ -128,9 +120,8 @@ export function useSolve(
         const problem = await fetchProblem();
         setResult(problem);
         
-        // Immediately delete it since we are showing it right away
-        if (user && problem.id) {
-          await deleteDoc(doc(db, 'users', user.uid, 'problems', problem.id));
+        if (problem.id) {
+          await deleteDoc(doc(db, 'users', USER_ID, 'problems', problem.id));
         }
       } catch (error) {
         console.error('Workflow failed:', error);

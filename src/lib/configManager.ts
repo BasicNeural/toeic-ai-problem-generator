@@ -5,7 +5,7 @@ export interface FirebaseAppConfig {
   appId: string;
   apiKey: string;
   authDomain: string;
-  firestoreDatabaseId: string;
+  firestoreDatabaseId?: string;
   storageBucket: string;
   messagingSenderId: string;
   measurementId?: string;
@@ -13,8 +13,34 @@ export interface FirebaseAppConfig {
 
 const REQUIRED_FIELDS: (keyof FirebaseAppConfig)[] = [
   'projectId', 'appId', 'apiKey', 'authDomain',
-  'firestoreDatabaseId', 'storageBucket', 'messagingSenderId',
+  'storageBucket', 'messagingSenderId',
 ];
+
+export function parseFirebaseInput(input: string): Record<string, string> | null {
+  let trimmed = input.trim();
+
+  try {
+    return JSON.parse(trimmed);
+  } catch { /* not pure JSON, try JS format */ }
+
+  let cleaned = trimmed
+    .replace(/^(?:const|let|var)\s+\w+\s*=\s*/, '')
+    .replace(/;\s*$/, '')
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch { /* still not JSON, convert JS object literal */ }
+
+  cleaned = cleaned.replace(/(\w+)\s*:/g, (_match, key) => `"${key}":`);
+  cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
 
 export const ConfigManager = {
   getFirebaseConfig(): FirebaseAppConfig | null {

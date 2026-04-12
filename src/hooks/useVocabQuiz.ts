@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Word, VocabQuiz } from '../types';
 import { schedule } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
-import { db, handleFirestoreError, OperationType, FirebaseUser } from '../firebase';
+import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
 
 export type VocabQuizPhase = 'idle' | 'loading' | 'quiz' | 'results';
 
-export function useVocabQuiz(words: Word[], user: FirebaseUser | null) {
+export function useVocabQuiz(words: Word[]) {
   const [phase, setPhase] = useState<VocabQuizPhase>('idle');
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
   const [quizzes, setQuizzes] = useState<Record<string, VocabQuiz>>({});
@@ -18,7 +18,6 @@ export function useVocabQuiz(words: Word[], user: FirebaseUser | null) {
     const memorizedWords = words.filter(w => w.memorized && w.lastRating !== 'Again');
     if (memorizedWords.length === 0) return;
 
-    // Select up to 10 random memorized words
     const selectedWords = [...memorizedWords].sort(() => Math.random() - 0.5).slice(0, 10);
     
     setQuizQueue(selectedWords);
@@ -47,7 +46,6 @@ export function useVocabQuiz(words: Word[], user: FirebaseUser | null) {
   };
 
   const handleQuizAnswer = async (wordId: string, isCorrect: boolean) => {
-    if (!user) return;
     const currentWord = quizQueue[0];
     if (!currentWord || currentWord.id !== wordId || !currentWord.fsrs) return;
 
@@ -62,9 +60,9 @@ export function useVocabQuiz(words: Word[], user: FirebaseUser | null) {
       lastRating: finalLabel
     };
 
-    const wordDoc = doc(db, 'users', user.uid, 'words', currentWord.id);
+    const wordDoc = doc(db, 'users', USER_ID, 'words', currentWord.id);
     setDoc(wordDoc, updatedWord, { merge: true }).catch(err => {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}/words/${currentWord.id}`);
+      handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
     });
 
     setSessionResults(prev => [...prev, updatedWord]);

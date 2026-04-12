@@ -1,29 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
-import { db, handleFirestoreError, OperationType, FirebaseUser } from '../firebase';
+import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, onSnapshot, writeBatch, doc, getDocs, Timestamp } from 'firebase/firestore';
 import { Word } from '../types';
 import { parseCSV } from '../lib/wordParser';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay, subDays } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
 
-export function useVocabulary(user: FirebaseUser | null, isAuthReady: boolean) {
+export function useVocabulary() {
   const [words, setWords] = useState<Word[]>([]);
 
   useEffect(() => {
-    if (!user || !isAuthReady) {
-      setWords([]);
-      return;
-    }
-
-    const wordsRef = collection(db, 'users', user.uid, 'words');
+    const wordsRef = collection(db, 'users', USER_ID, 'words');
     const unsubscribe = onSnapshot(wordsRef, (snapshot) => {
       const fetchedWords = snapshot.docs.map(doc => doc.data() as Word);
       setWords(fetchedWords);
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}/words`);
+      handleFirestoreError(err, OperationType.GET, `users/${USER_ID}/words`);
     });
 
     return unsubscribe;
-  }, [user, isAuthReady]);
+  }, []);
 
   const memorizedCount = useMemo(() => {
     return words.filter(w => w.memorized && w.fsrs && w.fsrs.state > 0).length;
@@ -61,7 +56,6 @@ export function useVocabulary(user: FirebaseUser | null, isAuthReady: boolean) {
   }, [words]);
 
   const uploadCSV = async (file: File, onProgress: () => void, onSuccess: (count: number) => void, onError: () => void) => {
-    if (!user) return;
     onProgress();
 
     const reader = new FileReader();
@@ -71,15 +65,15 @@ export function useVocabulary(user: FirebaseUser | null, isAuthReady: boolean) {
       
       const batch = writeBatch(db);
       parsedWords.forEach(w => {
-        const wordDoc = doc(db, 'users', user.uid, 'words', w.id);
-        batch.set(wordDoc, { ...w, userId: user.uid, createdAt: Timestamp.now() });
+        const wordDoc = doc(db, 'users', USER_ID, 'words', w.id);
+        batch.set(wordDoc, { ...w, userId: USER_ID, createdAt: Timestamp.now() });
       });
       
       try {
         await batch.commit();
         onSuccess(parsedWords.length);
       } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/words`);
+        handleFirestoreError(err, OperationType.WRITE, `users/${USER_ID}/words`);
         onError();
       }
     };
@@ -88,12 +82,11 @@ export function useVocabulary(user: FirebaseUser | null, isAuthReady: boolean) {
   };
 
   const resetData = async (onProgress: () => void, onSuccess: () => void, onError: () => void) => {
-    if (!user) return;
     onProgress();
 
     try {
       const batch = writeBatch(db);
-      const wordsRef = collection(db, 'users', user.uid, 'words');
+      const wordsRef = collection(db, 'users', USER_ID, 'words');
       const snapshot = await getDocs(wordsRef);
       
       snapshot.docs.forEach((doc) => {
@@ -103,7 +96,7 @@ export function useVocabulary(user: FirebaseUser | null, isAuthReady: boolean) {
       await batch.commit();
       onSuccess();
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/words`);
+      handleFirestoreError(err, OperationType.DELETE, `users/${USER_ID}/words`);
       onError();
     }
   };

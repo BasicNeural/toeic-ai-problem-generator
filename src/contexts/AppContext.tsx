@@ -1,5 +1,4 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAuth } from '../hooks/useAuth';
 import { useVocabulary } from '../hooks/useVocabulary';
 import { useGrammarStats } from '../hooks/useGrammarStats';
 import { useMemorize } from '../hooks/useMemorize';
@@ -7,7 +6,6 @@ import { useSolve } from '../hooks/useSolve';
 import { useVocabQuiz } from '../hooks/useVocabQuiz';
 
 type AppContextType = {
-  auth: ReturnType<typeof useAuth>;
   vocabulary: ReturnType<typeof useVocabulary>;
   grammarStats: ReturnType<typeof useGrammarStats>;
   memorize: ReturnType<typeof useMemorize>;
@@ -18,16 +16,15 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const auth = useAuth();
-  const vocabulary = useVocabulary(auth.user, auth.isAuthReady);
-  const grammarStats = useGrammarStats(auth.user);
+  const vocabulary = useVocabulary();
+  const grammarStats = useGrammarStats();
   
-  const memorize = useMemorize(vocabulary.words, auth.user);
-  const solve = useSolve(vocabulary.words, grammarStats.updateStat, grammarStats.stats, auth.user);
-  const vocabQuiz = useVocabQuiz(vocabulary.words, auth.user);
+  const memorize = useMemorize(vocabulary.words);
+  const solve = useSolve(vocabulary.words, grammarStats.updateStat, grammarStats.stats);
+  const vocabQuiz = useVocabQuiz(vocabulary.words);
 
   return (
-    <AppContext.Provider value={{ auth, vocabulary, grammarStats, memorize, solve, vocabQuiz }}>
+    <AppContext.Provider value={{ vocabulary, grammarStats, memorize, solve, vocabQuiz }}>
       {children}
     </AppContext.Provider>
   );

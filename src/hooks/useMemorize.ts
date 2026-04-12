@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Word, VocabQuiz } from '../types';
 import { schedule, createInitialFSRS } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
-import { db, handleFirestoreError, OperationType, FirebaseUser } from '../firebase';
+import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
 import { getDailyResetTime } from '../lib/time';
 
 export type MemorizePhase = 'flashcards' | 'quiz' | 'results';
 
-export function useMemorize(words: Word[], user: FirebaseUser | null) {
+export function useMemorize(words: Word[]) {
   const [phase, setPhase] = useState<MemorizePhase>('flashcards');
   const [queue, setQueue] = useState<Word[]>([]);
   const [sessionWords, setSessionWords] = useState<Word[]>([]);
@@ -17,7 +17,6 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
   const [isComplete, setIsComplete] = useState(false);
   const [cardStartTime, setCardStartTime] = useState<number>(0);
   
-  // Quiz state
   const [quizzes, setQuizzes] = useState<Record<string, VocabQuiz>>({});
   const [isGeneratingQuizzes, setIsGeneratingQuizzes] = useState(false);
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
@@ -56,10 +55,9 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
     ];
 
     if (sessionWordsList.length === 0) {
-      return; // Nothing to study right now
+      return;
     }
 
-    // Shuffle
     const newSessionWords = sessionWordsList.sort(() => Math.random() - 0.5).map(w => ({
       ...w,
       failCount: 0
@@ -75,7 +73,6 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
     setSwipeRatings({});
     setIsGeneratingQuizzes(true);
 
-    // Generate quizzes in background
     if (newSessionWords.length > 0) {
       const targetTerms = newSessionWords.map(w => w.term);
       const knownTerms = words.filter(w => w.memorized).map(w => w.term);
@@ -83,7 +80,6 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
         .then(quizList => {
           const quizMap: Record<string, VocabQuiz> = {};
           quizList.forEach(q => {
-            // Find the word id for this term
             const word = newSessionWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
             if (word) {
               quizMap[word.id] = q;
@@ -123,7 +119,6 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
         ratingLabel = 'Good';
       }
 
-      // Store provisional rating
       setSwipeRatings(prev => ({
         ...prev,
         [currentWord.id]: { rating, label: ratingLabel }
@@ -133,7 +128,6 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
       setQueue(nextQueue);
       
       if (nextQueue.length === 0) {
-        // Flashcards done, move to quiz phase
         setQuizQueue([...sessionWords]);
         setPhase('quiz');
       } else {
@@ -162,14 +156,12 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
   };
 
   const handleQuizAnswer = async (wordId: string, isCorrect: boolean) => {
-    if (!user) return;
     const currentWord = sessionWords.find(w => w.id === wordId);
     if (!currentWord) return;
 
     let finalRating = swipeRatings[wordId]?.rating ?? FSRSRating.Good;
     let finalLabel = swipeRatings[wordId]?.label ?? 'Good';
 
-    // If they get it wrong, force it to 'Again' (retry)
     if (!isCorrect) {
       finalRating = FSRSRating.Again;
       finalLabel = 'Again';
@@ -185,9 +177,9 @@ export function useMemorize(words: Word[], user: FirebaseUser | null) {
       introducedAt: currentWord.introducedAt || new Date().toISOString()
     };
 
-    const wordDoc = doc(db, 'users', user.uid, 'words', currentWord.id);
+    const wordDoc = doc(db, 'users', USER_ID, 'words', currentWord.id);
     setDoc(wordDoc, updatedWord, { merge: true }).catch(err => {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}/words/${currentWord.id}`);
+      handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
     });
 
     setSessionResults(prev => {
