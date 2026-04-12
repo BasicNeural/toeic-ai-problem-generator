@@ -38,11 +38,8 @@ export function reinitializeFirebase() {
   _cachedConfig = null;
 }
 
-export const db = new Proxy({} as Firestore, {
-  get(_target, prop) {
-    return (getDb() as any)[prop];
-  },
-});
+// Use getDb() directly in all hooks/services instead of a proxy export.
+// Firebase's collection()/doc() require a real Firestore instance (instanceof checks).
 
 export enum OperationType {
   CREATE = 'create',

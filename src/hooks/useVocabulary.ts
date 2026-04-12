@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
+import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, onSnapshot, writeBatch, doc, getDocs, Timestamp } from 'firebase/firestore';
 import { Word } from '../types';
 import { parseCSV } from '../lib/wordParser';
@@ -9,7 +9,7 @@ export function useVocabulary() {
   const [words, setWords] = useState<Word[]>([]);
 
   useEffect(() => {
-    const wordsRef = collection(db, 'users', USER_ID, 'words');
+    const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
     const unsubscribe = onSnapshot(wordsRef, (snapshot) => {
       const fetchedWords = snapshot.docs.map(doc => doc.data() as Word);
       setWords(fetchedWords);
@@ -63,9 +63,9 @@ export function useVocabulary() {
       const csv = event.target?.result as string;
       const parsedWords = parseCSV(csv);
       
-      const batch = writeBatch(db);
+      const batch = writeBatch(getDb());
       parsedWords.forEach(w => {
-        const wordDoc = doc(db, 'users', USER_ID, 'words', w.id);
+        const wordDoc = doc(getDb(), 'users', USER_ID, 'words', w.id);
         batch.set(wordDoc, { ...w, userId: USER_ID, createdAt: Timestamp.now() });
       });
       
@@ -85,8 +85,8 @@ export function useVocabulary() {
     onProgress();
 
     try {
-      const batch = writeBatch(db);
-      const wordsRef = collection(db, 'users', USER_ID, 'words');
+      const batch = writeBatch(getDb());
+      const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
       const snapshot = await getDocs(wordsRef);
       
       snapshot.docs.forEach((doc) => {

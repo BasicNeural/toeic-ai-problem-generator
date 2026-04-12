@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
+import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export const DEFAULT_GRAMMAR_CATEGORIES = ['시제', '분사', '관계사', '접속사', '전치사', '수동태', '가정법', '동명사'];
@@ -8,7 +8,7 @@ export function useGrammarStats() {
   const [stats, setStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const docRef = doc(db, 'users', USER_ID, 'grammarStats', 'mastery');
+    const docRef = doc(getDb(), 'users', USER_ID, 'grammarStats', 'mastery');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         setStats(docSnap.data() as Record<string, number>);
@@ -35,7 +35,7 @@ export function useGrammarStats() {
       newScore = Math.max(0, currentScore - ((6 - difficulty) * 2));
     }
 
-    const docRef = doc(db, 'users', USER_ID, 'grammarStats', 'mastery');
+    const docRef = doc(getDb(), 'users', USER_ID, 'grammarStats', 'mastery');
     await setDoc(docRef, { [category]: newScore }, { merge: true }).catch(err => {
       handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/grammarStats/mastery`);
     });

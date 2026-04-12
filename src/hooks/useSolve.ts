@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Problem, Word } from '../types';
 import { GeminiService } from '../services/geminiService';
-import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
+import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 
 export function useSolve(
@@ -27,7 +27,7 @@ export function useSolve(
 
   useEffect(() => {
     const q = query(
-      collection(db, 'users', USER_ID, 'problems'),
+      collection(getDb(), 'users', USER_ID, 'problems'),
       where('status', '==', 'pending'),
       orderBy('createdAt', 'asc'),
       limit(5)
@@ -66,7 +66,7 @@ export function useSolve(
     };
 
     try {
-      await setDoc(doc(db, 'users', USER_ID, 'problems', problemWithMeta.id!), problemWithMeta);
+      await setDoc(doc(getDb(), 'users', USER_ID, 'problems', problemWithMeta.id!), problemWithMeta);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `users/${USER_ID}/problems/${problemWithMeta.id}`);
     }
@@ -109,7 +109,7 @@ export function useSolve(
       
       if (nextProb.id) {
         try {
-          await deleteDoc(doc(db, 'users', USER_ID, 'problems', nextProb.id));
+          await deleteDoc(doc(getDb(), 'users', USER_ID, 'problems', nextProb.id));
         } catch (error) {
           handleFirestoreError(error, OperationType.DELETE, `users/${USER_ID}/problems/${nextProb.id}`);
         }
@@ -121,7 +121,7 @@ export function useSolve(
         setResult(problem);
         
         if (problem.id) {
-          await deleteDoc(doc(db, 'users', USER_ID, 'problems', problem.id));
+          await deleteDoc(doc(getDb(), 'users', USER_ID, 'problems', problem.id));
         }
       } catch (error) {
         console.error('Workflow failed:', error);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Word, VocabQuiz } from '../types';
 import { schedule } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
-import { db, handleFirestoreError, OperationType, USER_ID } from '../firebase';
+import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
 
@@ -60,7 +60,7 @@ export function useVocabQuiz(words: Word[]) {
       lastRating: finalLabel
     };
 
-    const wordDoc = doc(db, 'users', USER_ID, 'words', currentWord.id);
+    const wordDoc = doc(getDb(), 'users', USER_ID, 'words', currentWord.id);
     setDoc(wordDoc, updatedWord, { merge: true }).catch(err => {
       handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
     });
