@@ -13,7 +13,7 @@ export function FlashcardPhase({ queue, onSwipe, onBack }: FlashcardPhaseProps) 
   const currentWord = queue[0];
 
   return (
-    <div className="w-full max-w-md h-screen flex flex-col p-6 overflow-hidden">
+    <div className="w-full max-w-md h-dvh flex flex-col p-6 overflow-hidden">
       <header className="flex items-center justify-between mb-8">
         <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
           <ChevronLeft className="w-6 h-6 text-slate-600" />

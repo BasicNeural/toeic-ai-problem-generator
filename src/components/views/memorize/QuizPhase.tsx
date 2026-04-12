@@ -34,7 +34,7 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
 
   if (isGeneratingQuizzes && !currentQuiz) {
     return (
-      <div className="w-full max-w-md h-screen flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md h-dvh flex flex-col items-center justify-center p-6">
         <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
         <h2 className="text-xl font-bold text-slate-900">퀴즈 생성 중...</h2>
         <p className="text-slate-500 text-center mt-2">AI가 검증 퀴즈를 준비하고 있습니다.</p>
@@ -45,7 +45,7 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
   if (!currentQuiz) {
     // Fallback if quiz generation failed for this word
     return (
-      <div className="w-full max-w-md h-screen flex flex-col items-center justify-center p-6 space-y-6">
+      <div className="w-full max-w-md h-dvh flex flex-col items-center justify-center p-6 space-y-6">
         <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center">
           <AlertCircle className="w-8 h-8 text-amber-500" />
         </div>
@@ -67,7 +67,7 @@ export function QuizPhase({ quizQueue, quizzes, isGeneratingQuizzes, onQuizAnswe
   }
 
   return (
-    <div className="w-full max-w-md h-screen flex flex-col p-6 overflow-hidden">
+    <div className="w-full max-w-md h-dvh flex flex-col p-6 overflow-hidden">
       <header className="flex items-center justify-between mb-8">
         <div className="w-10" />
         <div className="flex flex-col items-center">

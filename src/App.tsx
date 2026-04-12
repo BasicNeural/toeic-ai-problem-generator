@@ -23,7 +23,7 @@ export default function App() {
   if (!isConfigured) {
     return (
       <ErrorBoundary>
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+        <div className="min-h-dvh bg-slate-50 flex flex-col items-center">
           <SetupView onComplete={() => setIsConfigured(true)} />
         </div>
       </ErrorBoundary>
@@ -97,7 +97,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+    <div className="min-h-dvh bg-slate-50 flex flex-col items-center">
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={

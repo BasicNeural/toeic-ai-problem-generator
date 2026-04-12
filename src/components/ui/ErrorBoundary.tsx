@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+        <div className="min-h-dvh flex items-center justify-center p-6 bg-slate-50">
           <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 max-w-md w-full text-center space-y-6">
             <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto">
               <AlertCircle className="w-8 h-8 text-rose-600" />

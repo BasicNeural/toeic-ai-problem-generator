@@ -39,7 +39,7 @@ export function VocabQuizView() {
 
   if (phase === 'loading') {
     return (
-      <div className="w-full max-w-md h-screen flex flex-col items-center justify-center p-6 bg-blue-600 text-white relative overflow-hidden">
+      <div className="w-full max-w-md h-dvh flex flex-col items-center justify-center p-6 bg-blue-600 text-white relative overflow-hidden">
         <motion.div 
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -123,7 +123,7 @@ export function VocabQuizView() {
   if (phase === 'quiz') {
     if (!currentQuiz) {
       return (
-        <div className="w-full max-w-md h-screen flex flex-col items-center justify-center p-6 space-y-6">
+        <div className="w-full max-w-md h-dvh flex flex-col items-center justify-center p-6 space-y-6">
           <p className="text-slate-500">이 단어에 대한 퀴즈를 생성할 수 없습니다.</p>
           <button 
             onClick={() => handleQuizAnswer(currentQuizWord!.id, true)}
@@ -136,7 +136,7 @@ export function VocabQuizView() {
     }
 
     return (
-      <div className="w-full max-w-md h-screen flex flex-col p-6 overflow-hidden">
+      <div className="w-full max-w-md h-dvh flex flex-col p-6 overflow-hidden">
         <header className="flex items-center justify-between mb-8">
           <button onClick={handleBack} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <ChevronLeft className="w-6 h-6 text-slate-600" />
