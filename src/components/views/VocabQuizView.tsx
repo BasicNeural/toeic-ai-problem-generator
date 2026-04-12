@@ -153,6 +153,16 @@ export function VocabQuizView() {
             <p className="text-lg font-medium text-slate-800 leading-relaxed">
               {currentQuiz.question}
             </p>
+            {currentQuiz.vocabulary && currentQuiz.vocabulary.length > 0 && (
+              <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-4 border-t border-slate-50">
+                {currentQuiz.vocabulary.map((vocab, idx) => (
+                  <div key={idx} className="flex items-baseline gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-500">{vocab.word}</span>
+                    <span className="text-[10px] text-slate-400">{vocab.meaning}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

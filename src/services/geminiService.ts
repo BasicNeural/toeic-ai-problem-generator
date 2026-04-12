@@ -92,8 +92,20 @@ const vocabQuizArraySchema = {
       },
       answer: { type: Type.STRING, enum: ["a", "b", "c", "d"], description: "The correct option key" },
       explanation: { type: Type.STRING, description: "Brief explanation in Korean" },
+      vocabulary: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING, description: "A key English word from the sentence" },
+            meaning: { type: Type.STRING, description: "Korean meaning of the word" },
+          },
+          required: ["word", "meaning"],
+        },
+        description: "2-4 key vocabulary words from the sentence with Korean meanings",
+      },
     },
-    required: ["word", "question", "translation", "options", "answer", "explanation"],
+    required: ["word", "question", "translation", "options", "answer", "explanation", "vocabulary"],
   }
 };
 

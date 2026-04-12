@@ -65,6 +65,14 @@ export function useMemorize(words: Word[]) {
       ...dueWords.slice(0, takeDue)
     ];
 
+    if (sessionWordsList.length < 10) {
+      const selectedIds = new Set(sessionWordsList.map(w => w.id));
+      const notYetDue = words
+        .filter(w => w.fsrs && new Date(w.fsrs.due).getTime() > Date.now() && !selectedIds.has(w.id))
+        .sort((a, b) => new Date(a.fsrs!.due).getTime() - new Date(b.fsrs!.due).getTime());
+      sessionWordsList = [...sessionWordsList, ...notYetDue.slice(0, 10 - sessionWordsList.length)];
+    }
+
     if (sessionWordsList.length === 0) {
       const extraNew = words.filter(w => !w.fsrs).sort(() => Math.random() - 0.5).slice(0, 2);
       const reviewable = words

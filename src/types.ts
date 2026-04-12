@@ -41,6 +41,7 @@ export interface VocabQuiz {
   };
   answer: 'a' | 'b' | 'c' | 'd';
   explanation: string;
+  vocabulary?: { word: string; meaning: string }[];
 }
 
 export interface FSRSState {

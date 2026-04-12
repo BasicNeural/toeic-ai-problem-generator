@@ -9,7 +9,7 @@ CRITICAL INSTRUCTION FOR OPTIONS:
 To make the quiz challenging, the incorrect options (distractors) MUST be selected from the following list of words the user already knows:
 KNOWN WORDS: ${knownWordsList}
 
-The questions should test the meaning or usage of the target word in a sentence. Provide the output as a JSON array.
+The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
   `,
 
   generateGrammarProblem: (wordList: string, targetListStr: string) => `
