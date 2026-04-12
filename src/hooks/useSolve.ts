@@ -5,7 +5,7 @@ import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase
 import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 
 export function useSolve(
-  words: Word[], 
+  words: Word[],
   updateGrammarStat: (grammar: string, isCorrect: boolean, difficulty: number) => void,
   grammarStats: { subject: string; A: number; fullMark: number }[]
 ) {
@@ -56,8 +56,8 @@ export function useSolve(
     const sortedStats = [...currentStats].sort((a, b) => a.A - b.A);
     const targetGrammarCategories = sortedStats.slice(0, 3).map(s => s.subject);
 
-    const { problem } = await GeminiService.runWorkflow(selectedWords, targetGrammarCategories, () => {});
-    
+    const { problem } = await GeminiService.runWorkflow(selectedWords, targetGrammarCategories, () => { });
+
     const problemWithMeta: Problem = {
       ...problem,
       id: `prob-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -106,7 +106,7 @@ export function useSolve(
     if (prefetchedProblems.length > 0) {
       const nextProb = prefetchedProblems[0];
       setResult(nextProb);
-      
+
       if (nextProb.id) {
         try {
           await deleteDoc(doc(getDb(), 'users', USER_ID, 'problems', nextProb.id));
@@ -119,7 +119,7 @@ export function useSolve(
       try {
         const problem = await fetchProblem();
         setResult(problem);
-        
+
         if (problem.id) {
           await deleteDoc(doc(getDb(), 'users', USER_ID, 'problems', problem.id));
         }

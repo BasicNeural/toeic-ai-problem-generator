@@ -55,7 +55,12 @@ export function useMemorize(words: Word[]) {
     ];
 
     if (sessionWordsList.length === 0) {
-      return;
+      const reviewable = words
+        .filter(w => w.fsrs && w.fsrs.state > 0)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 10);
+      if (reviewable.length === 0) return;
+      sessionWordsList = reviewable;
     }
 
     const newSessionWords = sessionWordsList.sort(() => Math.random() - 0.5).map(w => ({

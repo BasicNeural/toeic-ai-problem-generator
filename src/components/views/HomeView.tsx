@@ -45,6 +45,9 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const dueWordsCount = words.filter(w => w.fsrs && new Date(w.fsrs.due).getTime() <= Date.now()).length;
 
   const activeSessionCount = !memorize.isComplete && memorize.queue.length > 0 ? memorize.queue.length : 0;
+  const hasScheduledStudy = newWordsToLearnToday > 0 || dueWordsCount > 0;
+  const hasReviewableWords = words.some(w => w.fsrs && w.fsrs.state > 0);
+  const canStudy = activeSessionCount > 0 || hasScheduledStudy || hasReviewableWords;
 
   const handleStartMemorize = () => {
     memorize.start();
@@ -64,7 +67,6 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const currentMonthStr = format(new Date(), 'yyyy년 M월');
   const firstDayOfMonth = monthlyActivity.length > 0 ? getDay(monthlyActivity[0].date) : 0;
   const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
-  const canStudy = activeSessionCount > 0 || newWordsToLearnToday > 0 || dueWordsCount > 0;
 
   return (
     <motion.div 
@@ -202,14 +204,16 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
         >
           <div className="space-y-1">
             <h3 className="font-bold text-slate-900 text-lg">
-              {activeSessionCount > 0 ? '학습 이어서 하기' : '단어 암기하기'}
+              {activeSessionCount > 0 
+                ? '학습 이어서 하기' 
+                : (hasScheduledStudy ? '단어 암기하기' : '추가로 더 학습하기')}
             </h3>
             <p className="text-sm text-slate-500">
               {activeSessionCount > 0 
                 ? `현재 세션에 ${activeSessionCount}단어 남음` 
-                : (canStudy 
+                : (hasScheduledStudy 
                     ? `신규 ${newWordsToLearnToday}개, 복습 ${dueWordsCount}개` 
-                    : '지금은 학습할 단어가 없습니다')}
+                    : '외운 단어를 다시 복습합니다')}
             </p>
           </div>
           <div className={cn(
