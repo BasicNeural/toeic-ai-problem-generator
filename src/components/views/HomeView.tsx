@@ -142,7 +142,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
                 <div 
                   key={i} 
                   className={cn(
-                    "aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all",
+                    "aspect-square rounded-xl flex items-center justify-center relative transition-all",
                     hasActivity ? "bg-blue-50 border border-blue-100" : "bg-slate-50 border border-transparent",
                     today && "ring-2 ring-blue-400 ring-offset-1"
                   )}
@@ -153,12 +153,11 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
                   )}>
                     {format(dayData.date, 'd')}
                   </span>
-                  <span className={cn(
-                    "text-[8px] font-bold leading-none mt-1",
-                    hasActivity ? "text-blue-500" : "invisible"
-                  )}>
-                    {hasActivity ? dayData.count : '\u00A0'}
-                  </span>
+                  {hasActivity && (
+                    <span className="absolute bottom-0.5 text-[8px] font-bold text-blue-500 leading-none">
+                      {dayData.count}
+                    </span>
+                  )}
                 </div>
               );
             })}
