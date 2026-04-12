@@ -14,19 +14,20 @@ async function executeWithRetry<T>(operation: (ai: GoogleGenAI) => Promise<T>): 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const ai = getAIClient();
-      return await operation(ai);
+      const result = await operation(ai);
+      ApiKeyManager.advance();
+      return result;
     } catch (error: any) {
       lastError = error;
-      // Check if it's a rate limit error (429)
       if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
         console.warn(`API Key rate limited. Rotating key... (Attempt ${attempt + 1}/${maxAttempts})`);
         ApiKeyManager.rotateKey();
       } else {
-        throw error; // Not a rate limit error, throw immediately
+        throw error;
       }
     }
   }
-  throw lastError; // All keys exhausted
+  throw lastError;
 }
 
 const problemSchema = {

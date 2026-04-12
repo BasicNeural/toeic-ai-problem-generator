@@ -60,5 +60,13 @@ export const ApiKeyManager = {
       this.setIndex(newIndex);
       window.dispatchEvent(new CustomEvent('apiKeyRotated'));
     }
+  },
+
+  advance() {
+    const keys = this.getAllKeys();
+    if (keys.length > 1) {
+      const newIndex = (this.getIndex() + 1) % keys.length;
+      localStorage.setItem(INDEX_KEY, newIndex.toString());
+    }
   }
 };
