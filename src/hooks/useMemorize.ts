@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Word, VocabQuiz } from '../types';
+import { useState, useEffect, useCallback } from 'react';
+import { Word, VocabQuiz, StatsSummary, MemorizeSession } from '../types';
 import { schedule, createInitialFSRS } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
 import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
-import { collection, doc, setDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, getDocs, writeBatch, query, where, limit, orderBy, increment, getDoc, updateDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
-import { getDailyResetTime } from '../lib/time';
+import { getStudyDateKey } from '../lib/time';
 
 export type MemorizePhase = 'flashcards' | 'quiz' | 'results';
 
-export function useMemorize(words: Word[]) {
+export function useMemorize(stats: StatsSummary) {
   const [phase, setPhase] = useState<MemorizePhase>('flashcards');
   const [queue, setQueue] = useState<Word[]>([]);
   const [sessionWords, setSessionWords] = useState<Word[]>([]);
@@ -21,67 +21,134 @@ export function useMemorize(words: Word[]) {
   const [isGeneratingQuizzes, setIsGeneratingQuizzes] = useState(false);
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
   const [swipeRatings, setSwipeRatings] = useState<Record<string, { rating: FSRSRating, label: string }>>({});
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
 
+  // Load session or cache on mount
   useEffect(() => {
-    getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'))
-      .then(snapshot => {
-        if (snapshot.empty) return;
-        const cached: Record<string, VocabQuiz> = {};
-        snapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
-        setQuizzes(cached);
-      })
-      .catch(() => {});
+    const loadInitialData = async () => {
+      try {
+        // 1. Try to load active session
+        const sessionDoc = await getDoc(doc(getDb(), 'users', USER_ID, 'sessions', 'memorize'));
+        if (sessionDoc.exists()) {
+          const sessionData = sessionDoc.data() as MemorizeSession;
+          setPhase(sessionData.phase);
+          setQueue(sessionData.queue);
+          setSessionWords(sessionData.sessionWords);
+          setQuizQueue(sessionData.quizQueue);
+          setSwipeRatings(sessionData.swipeRatings as any);
+          setCardStartTime(Date.now());
+          
+          if (sessionData.phase === 'results') {
+            setIsComplete(true);
+          }
+        }
+
+        // 2. Load cached quizzes
+        const snapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
+        if (!snapshot.empty) {
+          const cached: Record<string, VocabQuiz> = {};
+          snapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
+          setQuizzes(cached);
+        }
+      } catch (err) {
+        console.error("Failed to load session/cache", err);
+      } finally {
+        setIsLoadingSession(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  const saveSession = useCallback(async (updates: Partial<MemorizeSession>) => {
+    try {
+      await setDoc(doc(getDb(), 'users', USER_ID, 'sessions', 'memorize'), {
+        updatedAt: Date.now(),
+        ...updates
+      }, { merge: true });
+    } catch (err) {
+      console.error("Failed to save session", err);
+    }
   }, []);
 
   const start = async () => {
-    if (queue.length > 0 && !isComplete && phase !== 'results') {
+    // If we have an active session, just resume (unless it's already complete)
+    if (queue.length > 0 && !isComplete) {
       setCardStartTime(Date.now());
       return;
     }
 
-    const resetTime = getDailyResetTime();
-    const introducedTodayCount = words.filter(w => w.introducedAt && new Date(w.introducedAt).getTime() >= resetTime).length;
-    const remainingNewWords = Math.max(0, 10 - introducedTodayCount);
+    const todayKey = getStudyDateKey();
+    const introducedToday = stats.newWordsToday[todayKey] || 0;
+    const hasAllowance = introducedToday < 10;
 
-    const newWords = words.filter(w => !w.fsrs).sort(() => Math.random() - 0.5);
-    const dueWords = words.filter(w => w.fsrs && new Date(w.fsrs.due).getTime() <= Date.now())
-      .sort((a, b) => new Date(a.fsrs!.due).getTime() - new Date(b.fsrs!.due).getTime());
+    const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
+    let sessionWordsList: Word[] = [];
 
-    let availableNew = Math.min(newWords.length, remainingNewWords);
-    
-    let takeNew = Math.min(availableNew, 2);
-    let takeDue = Math.min(dueWords.length, 10 - takeNew);
+    if (hasAllowance) {
+      // 2.1. 신규 카드를 최대 2장 선택한다.
+      const newSnap = await getDocs(query(wordsRef, where('fsrs', '==', null), limit(2)));
+      sessionWordsList.push(...newSnap.docs.map(d => d.data() as Word));
 
-    if (takeNew + takeDue < 10 && availableNew > takeNew) {
-      takeNew = Math.min(availableNew, 10 - takeDue);
+      // 2.2. 기존 학습 단어에서 due가 낮은 순으로 나머지를 채운다.
+      if (sessionWordsList.length < 10) {
+        const needed = 10 - sessionWordsList.length;
+        const existingSnap = await getDocs(query(
+          wordsRef, 
+          orderBy('fsrs.due', 'asc'),
+          limit(needed)
+        ));
+        sessionWordsList.push(...existingSnap.docs.map(d => d.data() as Word));
+      }
+
+      // 2.3. 선택된 카드가 10장 미만일 경우 신규 카드로 나머지를 채운다.
+      if (sessionWordsList.length < 10) {
+        const alreadySelectedIds = new Set(sessionWordsList.map(w => w.id));
+        const needed = 10 - sessionWordsList.length;
+        const moreNewSnap = await getDocs(query(wordsRef, where('fsrs', '==', null), limit(needed + 2)));
+        const moreNew = moreNewSnap.docs
+          .map(d => d.data() as Word)
+          .filter(w => !alreadySelectedIds.has(w.id))
+          .slice(0, needed);
+        sessionWordsList.push(...moreNew);
+      }
+    } else {
+      // 3. 신규 학습 상한이 없는 경우
+      const nowIso = new Date().toISOString();
+      const overdueCheckSnap = await getDocs(query(
+        wordsRef, 
+        where('fsrs.due', '<=', nowIso), 
+        limit(1)
+      ));
+      
+      if (!overdueCheckSnap.empty) {
+        // 3.1.1. 기존 학습 단어에서 due가 낮은 순으로 10장을 가져온다.
+        const existingSnap = await getDocs(query(
+          wordsRef, 
+          orderBy('fsrs.due', 'asc'),
+          limit(10)
+        ));
+        sessionWordsList.push(...existingSnap.docs.map(d => d.data() as Word));
+      } else {
+        // 3.2. 기존 학습 단어 중 due가 지난 것이 없는 경우
+        // 3.2.1. 신규 카드를 최대 2장 선택한다.
+        const newSnap = await getDocs(query(wordsRef, where('fsrs', '==', null), limit(2)));
+        sessionWordsList.push(...newSnap.docs.map(d => d.data() as Word));
+
+        // 3.2.2. 기존 학습 단어에서 due가 낮은 순으로 나머지를 채운다.
+        if (sessionWordsList.length < 10) {
+          const needed = 10 - sessionWordsList.length;
+          const existingSnap = await getDocs(query(
+            wordsRef, 
+            orderBy('fsrs.due', 'asc'),
+            limit(needed)
+          ));
+          sessionWordsList.push(...existingSnap.docs.map(d => d.data() as Word));
+        }
+      }
     }
-    
-    if (takeNew + takeDue < 10 && dueWords.length > takeDue) {
-      takeDue = Math.min(dueWords.length, 10 - takeNew);
-    }
 
-    let sessionWordsList = [
-      ...newWords.slice(0, takeNew),
-      ...dueWords.slice(0, takeDue)
-    ];
-
-    if (sessionWordsList.length === 0) {
-      const extraNew = words.filter(w => !w.fsrs).sort(() => Math.random() - 0.5).slice(0, 2);
-      const reviewable = words
-        .filter(w => w.fsrs && w.fsrs.state > 0)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 10 - extraNew.length);
-      sessionWordsList = [...extraNew, ...reviewable];
-      if (sessionWordsList.length === 0) return;
-    }
-
-    if (sessionWordsList.length < 10) {
-      const selectedIds = new Set(sessionWordsList.map(w => w.id));
-      const notYetDue = words
-        .filter(w => w.fsrs && new Date(w.fsrs.due).getTime() > Date.now() && !selectedIds.has(w.id))
-        .sort((a, b) => new Date(a.fsrs!.due).getTime() - new Date(b.fsrs!.due).getTime());
-      sessionWordsList = [...sessionWordsList, ...notYetDue.slice(0, 10 - sessionWordsList.length)];
-    }
+    if (sessionWordsList.length === 0) return;
 
     const newSessionWords = sessionWordsList.sort(() => Math.random() - 0.5).map(w => ({
       ...w,
@@ -97,48 +164,54 @@ export function useMemorize(words: Word[]) {
     setQuizzes({});
     setSwipeRatings({});
 
-    if (newSessionWords.length > 0) {
-      const cachedSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
-      if (!cachedSnapshot.empty) {
-        const cached: Record<string, VocabQuiz> = {};
-        cachedSnapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
-        const hasAll = newSessionWords.every(w => cached[w.id]);
-        if (hasAll) {
-          setQuizzes(cached);
-          return;
-        }
+    // Save initial session
+    await saveSession({
+      phase: 'flashcards',
+      sessionWords: newSessionWords,
+      queue: newSessionWords,
+      quizQueue: [],
+      swipeRatings: {},
+    });
+
+    const cachedSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
+    if (!cachedSnapshot.empty) {
+      const cached: Record<string, VocabQuiz> = {};
+      cachedSnapshot.forEach(d => { cached[d.id] = d.data() as VocabQuiz; });
+      const hasAll = newSessionWords.every(w => cached[w.id]);
+      if (hasAll) {
+        setQuizzes(cached);
+        return;
       }
-
-      setIsGeneratingQuizzes(true);
-      const targetTerms = newSessionWords.map(w => w.term);
-      const knownTerms = words.filter(w => w.memorized).map(w => w.term);
-      GeminiService.generateVocabQuizzes(targetTerms, knownTerms)
-        .then(async quizList => {
-          const quizMap: Record<string, VocabQuiz> = {};
-          quizList.forEach(q => {
-            const word = newSessionWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
-            if (word) {
-              quizMap[word.id] = q;
-            }
-          });
-          setQuizzes(quizMap);
-
-          const batch = writeBatch(getDb());
-          const oldSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
-          oldSnapshot.forEach(d => batch.delete(d.ref));
-          for (const [wordId, quiz] of Object.entries(quizMap)) {
-            batch.set(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId), quiz);
-          }
-          batch.commit().catch(err => {
-            handleFirestoreError(err, OperationType.WRITE, `users/${USER_ID}/memorizeQuizzes`);
-          });
-        })
-        .catch(err => console.error("Failed to generate quizzes", err))
-        .finally(() => setIsGeneratingQuizzes(false));
     }
+
+    setIsGeneratingQuizzes(true);
+    const targetTerms = newSessionWords.map(w => w.term);
+    GeminiService.generateVocabQuizzes(targetTerms, [])
+      .then(async quizList => {
+        const quizMap: Record<string, VocabQuiz> = {};
+        quizList.forEach(q => {
+          const word = newSessionWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
+          if (word) {
+            quizMap[word.id] = q;
+          }
+        });
+        setQuizzes(quizMap);
+
+        const batch = writeBatch(getDb());
+        const oldSnapshot = await getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'));
+        oldSnapshot.forEach(d => batch.delete(d.ref));
+        for (const [wordId, quiz] of Object.entries(quizMap)) {
+          batch.set(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId), quiz);
+        }
+        batch.commit().catch(err => {
+          handleFirestoreError(err, OperationType.WRITE, `users/${USER_ID}/memorizeQuizzes`);
+        });
+      })
+      .catch(err => console.error("Failed to generate quizzes", err))
+      .finally(() => setIsGeneratingQuizzes(false));
   };
 
-  const handleSwipe = (direction: 'left' | 'right') => {
+  const handleSwipe = async (direction: 'left' | 'right') => {
     const currentWord = queue[0];
     if (!currentWord) return;
 
@@ -163,10 +236,11 @@ export function useMemorize(words: Word[]) {
         ratingLabel = 'Good';
       }
 
-      setSwipeRatings(prev => ({
-        ...prev,
+      const nextSwipeRatings = {
+        ...swipeRatings,
         [currentWord.id]: { rating, label: ratingLabel }
-      }));
+      };
+      setSwipeRatings(nextSwipeRatings);
 
       const nextQueue = queue.slice(1);
       setQueue(nextQueue);
@@ -174,8 +248,18 @@ export function useMemorize(words: Word[]) {
       if (nextQueue.length === 0) {
         setQuizQueue([...sessionWords]);
         setPhase('quiz');
+        await saveSession({
+          phase: 'quiz',
+          queue: nextQueue,
+          quizQueue: [...sessionWords],
+          swipeRatings: nextSwipeRatings as any,
+        });
       } else {
         setCardStartTime(Date.now());
+        await saveSession({
+          queue: nextQueue,
+          swipeRatings: nextSwipeRatings as any,
+        });
       }
     } else {
       const updatedWord = {
@@ -184,18 +268,20 @@ export function useMemorize(words: Word[]) {
       };
 
       const nextQueue = queue.slice(1);
+      let newQueue: Word[];
       if (nextQueue.length === 0) {
-        setQueue([updatedWord]);
+        newQueue = [updatedWord];
       } else {
         const minIndex = 1;
         const maxIndex = nextQueue.length;
         const randomIndex = Math.floor(Math.random() * (maxIndex - minIndex + 1)) + minIndex;
         
-        const newQueue = [...nextQueue];
+        newQueue = [...nextQueue];
         newQueue.splice(randomIndex, 0, updatedWord);
-        setQueue(newQueue);
       }
+      setQueue(newQueue);
       setCardStartTime(Date.now());
+      await saveSession({ queue: newQueue });
     }
   };
 
@@ -205,7 +291,6 @@ export function useMemorize(words: Word[]) {
 
     let finalRating = swipeRatings[wordId]?.rating ?? FSRSRating.Good;
     let finalLabel = swipeRatings[wordId]?.label ?? 'Good';
-
     if (!isCorrect) {
       finalRating = FSRSRating.Again;
       finalLabel = 'Again';
@@ -213,6 +298,10 @@ export function useMemorize(words: Word[]) {
 
     const currentFsrs = currentWord.fsrs || createInitialFSRS();
     const updatedFsrs = schedule(currentFsrs, finalRating as any);
+    const wasMemorizedBefore = currentWord.memorized;
+    const isMemorizedNow = updatedFsrs.state > 0;
+    const isNewlyIntroduced = !currentWord.introducedAt;
+
     const updatedWord = { 
       ...currentWord, 
       fsrs: updatedFsrs,
@@ -221,14 +310,36 @@ export function useMemorize(words: Word[]) {
       introducedAt: currentWord.introducedAt || new Date().toISOString()
     };
 
+    const batch = writeBatch(getDb());
     const wordDoc = doc(getDb(), 'users', USER_ID, 'words', currentWord.id);
-    setDoc(wordDoc, updatedWord, { merge: true }).catch(err => {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
-    });
+    batch.set(wordDoc, updatedWord, { merge: true });
 
-    deleteDoc(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId)).catch(err => {
-      handleFirestoreError(err, OperationType.DELETE, `users/${USER_ID}/memorizeQuizzes/${wordId}`);
-    });
+    const statsRef = doc(getDb(), 'users', USER_ID, 'stats', 'summary');
+    const todayKey = getStudyDateKey();
+    
+    const statsUpdates: any = {
+      lastUpdated: Date.now(),
+      [`dailyActivity.${todayKey}`]: increment(1)
+    };
+
+    if (isNewlyIntroduced) {
+      statsUpdates[`newWordsToday.${todayKey}`] = increment(1);
+    }
+
+    if (!wasMemorizedBefore && isMemorizedNow) {
+      statsUpdates.memorizedCount = increment(1);
+    } else if (wasMemorizedBefore && !isMemorizedNow) {
+      statsUpdates.memorizedCount = increment(-1);
+    }
+
+    batch.update(statsRef, statsUpdates);
+    batch.delete(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId));
+
+    try {
+      await batch.commit();
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${USER_ID}/words/${currentWord.id}`);
+    }
 
     setSessionResults(prev => {
       if (prev.some(w => w.id === updatedWord.id)) return prev;
@@ -241,6 +352,11 @@ export function useMemorize(words: Word[]) {
     if (nextQuizQueue.length === 0) {
       setIsComplete(true);
       setPhase('results');
+      
+      // Clear session and quizzes
+      const sessionDocRef = doc(getDb(), 'users', USER_ID, 'sessions', 'memorize');
+      deleteDoc(sessionDocRef).catch(err => console.error("Failed to delete session", err));
+
       getDocs(collection(getDb(), 'users', USER_ID, 'memorizeQuizzes'))
         .then(snapshot => {
           if (snapshot.empty) return;
@@ -248,9 +364,11 @@ export function useMemorize(words: Word[]) {
           snapshot.forEach(d => batch.delete(d.ref));
           return batch.commit();
         })
-        .catch(err => {
-          handleFirestoreError(err, OperationType.DELETE, `users/${USER_ID}/memorizeQuizzes`);
-        });
+        .catch(() => {});
+    } else {
+      await saveSession({
+        quizQueue: nextQuizQueue
+      });
     }
   };
 
@@ -262,6 +380,7 @@ export function useMemorize(words: Word[]) {
     isGeneratingQuizzes,
     sessionResults, 
     isComplete, 
+    isLoadingSession,
     start, 
     handleSwipe,
     handleQuizAnswer

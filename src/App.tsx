@@ -53,7 +53,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'loading' } | null>(null);
 
   const { vocabulary } = useAppContext();
-  const { words, uploadCSV, resetData } = vocabulary;
+  const { uploadCSV, resetData } = vocabulary;
   
   useEffect(() => {
     const handleRotation = () => {
@@ -62,8 +62,6 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
     window.addEventListener('apiKeyRotated', handleRotation);
     return () => window.removeEventListener('apiKeyRotated', handleRotation);
   }, []);
-
-  const actuallyMemorizedWords = words.filter(w => w.memorized && w.lastRating !== 'Again');
 
   useEffect(() => {
     if (toast && toast.type !== 'loading') {
@@ -136,7 +134,6 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
         {showMemorizedList && (
           <MemorizedWordsModal
             key="memorized-list"
-            words={actuallyMemorizedWords}
             onClose={() => setShowMemorizedList(false)}
           />
         )}

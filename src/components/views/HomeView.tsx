@@ -21,7 +21,8 @@ import {
 import { format, getDay, isToday } from 'date-fns';
 import { cn } from '../../lib/utils';
 import { useAppContext } from '../../contexts/AppContext';
-import { getDailyResetTime } from '../../lib/time';
+import { useState, useEffect } from 'react';
+import { getStudyDateKey } from '../../lib/time';
 
 interface HomeViewProps {
   onOpenSettings: () => void;
@@ -31,23 +32,40 @@ interface HomeViewProps {
 export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps) {
   const navigate = useNavigate();
   const { vocabulary, grammarStats, memorize, solve, vocabQuiz } = useAppContext();
-  const { words, totalLearningDays, monthlyActivity } = vocabulary;
-  const stats = grammarStats.stats;
+  const { stats: summary, monthlyActivity, getStudyCounts } = vocabulary;
+  const stats = grammarStats.stats; 
+  
+  const [counts, setCounts] = useState<{ newTotal: number, dueTotal: number } | null>(null);
 
-  const actuallyMemorizedWords = words.filter(w => w.memorized && w.lastRating !== 'Again');
-  const hasMemorizedWords = actuallyMemorizedWords.length > 0;
+  useEffect(() => {
+    getStudyCounts().then(setCounts);
+  }, [summary.lastUpdated]);
 
-  const resetTime = getDailyResetTime();
-  const introducedTodayCount = words.filter(w => w.introducedAt && new Date(w.introducedAt).getTime() >= resetTime).length;
-  const remainingNewWords = Math.max(0, 10 - introducedTodayCount);
-  const newWordsTotal = words.filter(w => !w.fsrs).length;
-  const newWordsToLearnToday = Math.min(remainingNewWords, newWordsTotal);
-  const dueWordsCount = words.filter(w => w.fsrs && new Date(w.fsrs.due).getTime() <= Date.now()).length;
+  const todayKey = getStudyDateKey();
+  const introducedToday = summary.newWordsToday?.[todayKey] || 0;
+  const remainingNewAllowance = Math.max(0, 10 - introducedToday);
+  
+  const hasMemorizedWords = summary.memorizedCount > 0;
+  const canStudy = summary.totalWords > 0;
 
-  const activeSessionCount = !memorize.isComplete && memorize.queue.length > 0 ? memorize.queue.length : 0;
-  const hasScheduledStudy = newWordsToLearnToday > 0 || dueWordsCount > 0;
-  const hasReviewableWords = words.some(w => w.fsrs && w.fsrs.state > 0);
-  const canStudy = activeSessionCount > 0 || hasScheduledStudy || hasReviewableWords;
+  const getDescription = () => {
+    if (memorize.queue.length > 0) return `현재 세션에 ${memorize.queue.length}단어 남음`;
+    if (!counts) return '학습 데이터를 확인 중...';
+
+    // 신규 학습 잔량이 있고 학습할 신규 단어가 있는 경우 최우선 표시
+    if (remainingNewAllowance > 0 && counts.newTotal > 0) {
+      const displayCount = Math.min(counts.newTotal, remainingNewAllowance);
+      return `오늘 새로운 ${displayCount}개 단어 학습하기`;
+    }
+
+    const willTakeNew = Math.min(counts.newTotal, 2); // allowance가 없어도 로직상 최대 2개는 가져올 수 있음
+    const willTakeDue = Math.min(counts.dueTotal, 10 - willTakeNew);
+    
+    if (willTakeNew > 0 && willTakeDue > 0) return `신규 ${willTakeNew}개, 복습 ${willTakeDue}개 예정`;
+    if (willTakeNew > 0) return `신규 단어 ${willTakeNew}개 중심 학습`;
+    if (willTakeDue > 0) return `복습 단어 ${willTakeDue}개 중심 학습`;
+    return '새 단어와 복습을 함께 진행합니다';
+  };
 
   const handleStartMemorize = () => {
     memorize.start();
@@ -98,7 +116,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             <Flame className="w-4 h-4" />
             <span className="text-[10px] font-bold uppercase tracking-wider">학습일 합계</span>
           </div>
-          <div className="text-3xl font-bold text-slate-900">{totalLearningDays}일</div>
+          <div className="text-3xl font-bold text-slate-900">{summary.totalLearningDays}일</div>
           <div className="text-xs text-slate-400">꾸준히 학습 중!</div>
         </div>
         <button
@@ -109,7 +127,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-[10px] font-bold uppercase tracking-wider">외운 단어</span>
           </div>
-          <div className="text-3xl font-bold text-slate-900">{actuallyMemorizedWords.length}</div>
+          <div className="text-3xl font-bold text-slate-900">{summary.memorizedCount}</div>
           <div className="text-xs text-slate-400">'Again' 평가 제외</div>
         </button>
       </div>
@@ -125,16 +143,12 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
         >
           <div className="space-y-1">
             <h3 className="font-bold text-slate-900 text-lg">
-              {activeSessionCount > 0
+              {memorize.queue.length > 0
                 ? '학습 이어서 하기'
-                : (hasScheduledStudy ? '단어 암기하기' : '새로운 단어 더 학습하기')}
+                : '단어 암기하기'}
             </h3>
             <p className="text-sm text-slate-500">
-              {activeSessionCount > 0
-                ? `현재 세션에 ${activeSessionCount}단어 남음`
-                : (hasScheduledStudy
-                  ? `신규 ${newWordsToLearnToday}개, 복습 ${dueWordsCount}개`
-                  : '새 단어와 복습을 함께 진행합니다')}
+              {getDescription()}
             </p>
           </div>
           <div className={cn(

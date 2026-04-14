@@ -9,7 +9,7 @@ export function VocabQuizView() {
   const navigate = useNavigate();
   const { vocabQuiz } = useAppContext();
   const { 
-    phase, quizQueue, quizzes, sessionResults, handleQuizAnswer, reset 
+    phase, quizQueue, quizzes, sessionResults, handleQuizAnswer, reset, isLoadingSession
   } = vocabQuiz;
 
   const currentQuizWord = quizQueue[0];
@@ -36,6 +36,21 @@ export function VocabQuizView() {
     setSelectedOption(null);
     setShowExplanation(false);
   };
+
+  if (isLoadingSession) {
+    return (
+      <div className="w-full max-w-md h-dvh flex flex-col items-center justify-center p-6 bg-white">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center"
+        >
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+          <p className="text-slate-500 font-medium">퀴즈 세션을 불러오는 중...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (phase === 'loading') {
     return (

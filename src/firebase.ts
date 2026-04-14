@@ -1,12 +1,12 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Timestamp, Firestore } from 'firebase/firestore';
+import { getFirestore, Timestamp, Firestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { ConfigManager, FirebaseAppConfig } from './lib/configManager';
 
 export const USER_ID = 'default';
 
 let app: FirebaseApp | null = null;
 let _db: Firestore | null = null;
-let _cachedConfig: FirebaseAppConfig | null = null;
+let _cachedConfigStr: string | null = null;
 
 function ensureInitialized(): { app: FirebaseApp; config: FirebaseAppConfig } {
   const config = ConfigManager.getFirebaseConfig();
@@ -14,9 +14,10 @@ function ensureInitialized(): { app: FirebaseApp; config: FirebaseAppConfig } {
     throw new Error('Firebase is not configured. Please set up your Firebase config first.');
   }
 
-  if (!app || config !== _cachedConfig) {
+  const configStr = JSON.stringify(config);
+  if (!app || configStr !== _cachedConfigStr) {
     app = initializeApp(config);
-    _cachedConfig = config;
+    _cachedConfigStr = configStr;
     _db = null;
   }
 
@@ -26,16 +27,20 @@ function ensureInitialized(): { app: FirebaseApp; config: FirebaseAppConfig } {
 export function getDb(): Firestore {
   if (_db) return _db;
   const { app: firebaseApp, config } = ensureInitialized();
-  _db = config.firestoreDatabaseId
-    ? getFirestore(firebaseApp, config.firestoreDatabaseId)
-    : getFirestore(firebaseApp);
+  
+  // Enable offline persistence
+  _db = initializeFirestore(firebaseApp, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    ...(config.firestoreDatabaseId ? { databaseId: config.firestoreDatabaseId } : {})
+  });
+  
   return _db;
 }
 
 export function reinitializeFirebase() {
   app = null;
   _db = null;
-  _cachedConfig = null;
+  _cachedConfigStr = null;
 }
 
 // Use getDb() directly in all hooks/services instead of a proxy export.

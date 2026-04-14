@@ -1,3 +1,19 @@
+export interface MemorizeSession {
+  phase: 'flashcards' | 'quiz' | 'results';
+  sessionWords: Word[];
+  queue: Word[];
+  quizQueue: Word[];
+  swipeRatings: Record<string, { rating: number, label: string }>;
+  updatedAt: number;
+}
+
+export interface VocabQuizSession {
+  phase: 'idle' | 'loading' | 'quiz' | 'results';
+  quizQueue: Word[];
+  sessionResults: Word[];
+  updatedAt: number;
+}
+
 export interface Problem {
   id?: string;
   status?: 'pending' | 'solved';
@@ -66,6 +82,15 @@ export interface Word {
   // Session tracking
   failCount?: number;
   lastRating?: string;
+}
+
+export interface StatsSummary {
+  totalWords: number;
+  memorizedCount: number;
+  totalLearningDays: number;
+  dailyActivity: Record<string, number>; // "YYYY-MM-DD" -> review count
+  newWordsToday: Record<string, number>; // "YYYY-MM-DD" -> new words count
+  lastUpdated: number;
 }
 
 export interface AgentLog {

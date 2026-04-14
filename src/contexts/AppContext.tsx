@@ -18,10 +18,10 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const vocabulary = useVocabulary();
   const grammarStats = useGrammarStats();
-  
-  const memorize = useMemorize(vocabulary.words);
-  const solve = useSolve(vocabulary.words, grammarStats.updateStat, grammarStats.stats);
-  const vocabQuiz = useVocabQuiz(vocabulary.words);
+
+  const memorize = useMemorize(vocabulary.stats);
+  const solve = useSolve(grammarStats.updateStat, grammarStats.stats);
+  const vocabQuiz = useVocabQuiz();
 
   return (
     <AppContext.Provider value={{ vocabulary, grammarStats, memorize, solve, vocabQuiz }}>
@@ -29,7 +29,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     </AppContext.Provider>
   );
 }
-
 export function useAppContext() {
   const context = useContext(AppContext);
   if (!context) {

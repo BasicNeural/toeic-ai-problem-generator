@@ -1,10 +1,12 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, CheckCircle2, Clock } from 'lucide-react';
+import { X, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { Word } from '../../types';
 import { cn } from '../../lib/utils';
+import { getDb, USER_ID } from '../../firebase';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
 interface MemorizedWordsModalProps {
-  words: Word[];
   onClose: () => void;
 }
 
@@ -26,12 +28,53 @@ function getRelativeTime(dateString?: string) {
   return `${days}일 뒤`;
 }
 
-export function MemorizedWordsModal({ words, onClose }: MemorizedWordsModalProps) {
-  const sortedWords = [...words].sort((a, b) => {
-    const dueA = a.fsrs?.due ? new Date(a.fsrs.due).getTime() : Infinity;
-    const dueB = b.fsrs?.due ? new Date(b.fsrs.due).getTime() : Infinity;
-    return dueA - dueB;
-  });
+export function MemorizedWordsModal({ onClose }: MemorizedWordsModalProps) {
+  const [words, setWords] = useState<Word[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMemorized() {
+      try {
+        const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
+        let q;
+        try {
+          q = query(
+            wordsRef, 
+            where('memorized', '==', true),
+            orderBy('fsrs.due', 'asc'),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          const fetched = snapshot.docs
+            .map(doc => doc.data() as Word);
+          setWords(fetched);
+        } catch (e) {
+          console.warn("Memorized words query with order failed, falling back to basic query", e);
+          q = query(
+            wordsRef, 
+            where('memorized', '==', true),
+            limit(100)
+          );
+          const snapshot = await getDocs(q);
+          const fetched = snapshot.docs
+            .map(doc => doc.data() as Word)
+            .sort((a, b) => {
+              const dueA = a.fsrs?.due ? new Date(a.fsrs.due).getTime() : Infinity;
+              const dueB = b.fsrs?.due ? new Date(b.fsrs.due).getTime() : Infinity;
+              return dueA - dueB;
+            });
+          setWords(fetched);
+        }
+      } catch (e) {
+        console.error("Failed to fetch memorized words", e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchMemorized();
+  }, []);
+
+  const sortedWords = words; // Already sorted by query
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -51,7 +94,12 @@ export function MemorizedWordsModal({ words, onClose }: MemorizedWordsModalProps
           </button>
         </div>
         <div className="overflow-y-auto p-4 space-y-3">
-          {sortedWords.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-sm text-slate-500 font-medium">단어 목록을 불러오는 중...</p>
+            </div>
+          ) : sortedWords.length === 0 ? (
             <p className="text-center text-slate-500 py-8">아직 외운 단어가 없습니다.</p>
           ) : (
             sortedWords.map(word => (
