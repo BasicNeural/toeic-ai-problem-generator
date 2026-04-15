@@ -32,13 +32,13 @@ interface HomeViewProps {
 export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps) {
   const navigate = useNavigate();
   const { vocabulary, grammarStats, memorize, solve, vocabQuiz } = useAppContext();
-  const { stats: summary, monthlyActivity, getStudyCounts } = vocabulary;
+  const { stats: summary, monthlyActivity, getDueTotal: getDueTotal } = vocabulary;
   const stats = grammarStats.stats;
 
-  const [counts, setCounts] = useState<{ newTotal: number, dueTotal: number } | null>(null);
+  const [dueTotal, setDueTotal] = useState<number | null>(null);
 
   useEffect(() => {
-    getStudyCounts().then(setCounts);
+    getDueTotal().then(setDueTotal);
   }, [summary.lastUpdated]);
 
   const todayKey = getStudyDateKey();
@@ -51,14 +51,16 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const getDescription = () => {
     console.log(remainingNewAllowance)
     if (memorize.queue.length > 0) return `현재 세션에 ${memorize.queue.length}단어 남음`;
-    if (!counts) return '학습 데이터를 확인 중...';
+    if (!dueTotal) return '학습 데이터를 확인 중...';
+
+    const availableNewwords = summary.totalWords - summary.memorizedCount;
 
     // 신규 학습 잔량이 있고 학습할 신규 단어가 있는 경우 최우선 표시
-    if (remainingNewAllowance > 0 && counts.newTotal > 0) {
-      const displayCount = Math.min(counts.newTotal, remainingNewAllowance);
+    if (remainingNewAllowance > 0 && availableNewwords > 0) {
+      const displayCount = Math.min(availableNewwords, remainingNewAllowance);
       return `오늘 새로운 ${displayCount}개 단어 학습하기`;
     }
-    if (counts.dueTotal > 0)
+    if (dueTotal > 0)
       return '배운 단어 복습하기';
     return '새 단어와 복습을 함께 진행하기';
   };

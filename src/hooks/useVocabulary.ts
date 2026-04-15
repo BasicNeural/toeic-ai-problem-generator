@@ -57,16 +57,16 @@ export function useVocabulary() {
     reader.onload = async (event) => {
       const csv = event.target?.result as string;
       const parsedWords = parseCSV(csv);
-      
+
       const batch = writeBatch(getDb());
       parsedWords.forEach(w => {
         const wordDoc = doc(getDb(), 'users', USER_ID, 'words', w.id);
-        batch.set(wordDoc, { 
-          ...w, 
-          userId: USER_ID, 
+        batch.set(wordDoc, {
+          ...w,
+          userId: USER_ID,
           createdAt: Timestamp.now(),
           fsrs: null,
-          memorized: false 
+          memorized: false
         });
       });
 
@@ -75,7 +75,7 @@ export function useVocabulary() {
         totalWords: increment(parsedWords.length),
         lastUpdated: Date.now()
       });
-      
+
       try {
         await batch.commit();
         onSuccess(parsedWords.length);
@@ -94,7 +94,7 @@ export function useVocabulary() {
     try {
       const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
       const snapshot = await getDocs(wordsRef);
-      
+
       const batches = [];
       let currentBatch = writeBatch(getDb());
       let count = 0;
@@ -108,7 +108,7 @@ export function useVocabulary() {
           count = 0;
         }
       });
-      
+
       const statsRef = doc(getDb(), 'users', USER_ID, 'stats', 'summary');
       currentBatch.set(statsRef, INITIAL_STATS);
       batches.push(currentBatch.commit());
@@ -124,7 +124,7 @@ export function useVocabulary() {
   const syncStatsFromScratch = async () => {
     const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
     const snapshot = await getDocs(wordsRef);
-    
+
     const batch = writeBatch(getDb());
     const words = snapshot.docs.map(d => {
       const data = d.data() as Word;
@@ -133,7 +133,7 @@ export function useVocabulary() {
       }
       return data;
     });
-    
+
     const newStats: StatsSummary = {
       totalWords: words.length,
       memorizedCount: words.filter(w => w.memorized).length,
@@ -164,22 +164,15 @@ export function useVocabulary() {
     await batch.commit();
   };
 
-  return { 
+  return {
     stats,
-    monthlyActivity, 
-    uploadCSV, 
-    resetData, 
+    monthlyActivity,
+    uploadCSV,
+    resetData,
     syncStatsFromScratch,
-    getStudyCounts: async () => {
+    getDueTotal: async () => {
       const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
-      const [newCountSnap, dueCountSnap] = await Promise.all([
-        getCountFromServer(query(wordsRef, where('fsrs', '==', null))),
-        getCountFromServer(query(wordsRef, where('fsrs.due', '<=', new Date().toISOString())))
-      ]);
-      return {
-        newTotal: newCountSnap.data().count,
-        dueTotal: dueCountSnap.data().count
-      };
+      return await getCountFromServer(query(wordsRef, where('fsrs.due', '<=', new Date().toISOString()))).then(res => res.data().count)
     }
   };
 }
