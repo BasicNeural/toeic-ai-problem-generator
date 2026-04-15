@@ -33,8 +33,8 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const navigate = useNavigate();
   const { vocabulary, grammarStats, memorize, solve, vocabQuiz } = useAppContext();
   const { stats: summary, monthlyActivity, getStudyCounts } = vocabulary;
-  const stats = grammarStats.stats; 
-  
+  const stats = grammarStats.stats;
+
   const [counts, setCounts] = useState<{ newTotal: number, dueTotal: number } | null>(null);
 
   useEffect(() => {
@@ -44,11 +44,12 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const todayKey = getStudyDateKey();
   const introducedToday = summary.newWordsToday?.[todayKey] || 0;
   const remainingNewAllowance = Math.max(0, 10 - introducedToday);
-  
+
   const hasMemorizedWords = summary.memorizedCount > 0;
   const canStudy = summary.totalWords > 0;
 
   const getDescription = () => {
+    console.log(remainingNewAllowance)
     if (memorize.queue.length > 0) return `현재 세션에 ${memorize.queue.length}단어 남음`;
     if (!counts) return '학습 데이터를 확인 중...';
 
@@ -57,14 +58,9 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
       const displayCount = Math.min(counts.newTotal, remainingNewAllowance);
       return `오늘 새로운 ${displayCount}개 단어 학습하기`;
     }
-
-    const willTakeNew = Math.min(counts.newTotal, 2); // allowance가 없어도 로직상 최대 2개는 가져올 수 있음
-    const willTakeDue = Math.min(counts.dueTotal, 10 - willTakeNew);
-    
-    if (willTakeNew > 0 && willTakeDue > 0) return `신규 ${willTakeNew}개, 복습 ${willTakeDue}개 예정`;
-    if (willTakeNew > 0) return `신규 단어 ${willTakeNew}개 중심 학습`;
-    if (willTakeDue > 0) return `복습 단어 ${willTakeDue}개 중심 학습`;
-    return '새 단어와 복습을 함께 진행합니다';
+    if (counts.dueTotal > 0)
+      return '배운 단어 복습하기';
+    return '새 단어와 복습을 함께 진행하기';
   };
 
   const handleStartMemorize = () => {
