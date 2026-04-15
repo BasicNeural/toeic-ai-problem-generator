@@ -49,9 +49,8 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const canStudy = summary.totalWords > 0;
 
   const getDescription = () => {
-    console.log(remainingNewAllowance)
     if (memorize.queue.length > 0) return `현재 세션에 ${memorize.queue.length}단어 남음`;
-    if (!dueTotal) return '학습 데이터를 확인 중...';
+    if (dueTotal === null) return '학습 데이터를 확인 중...';
 
     const availableNewwords = summary.totalWords - summary.memorizedCount;
 
