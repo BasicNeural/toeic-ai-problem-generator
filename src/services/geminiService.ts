@@ -116,10 +116,21 @@ const vocabQuizArraySchema = {
 
 export class GeminiService {
   static async generateVocabQuizzes(targetWords: string[], knownWords: string[]): Promise<VocabQuiz[]> {
-    const knownWordsList = knownWords.length > 0 ? knownWords.join(', ') : 'any TOEIC vocabulary';
     const response = await executeWithRetry(ai => ai.models.generateContent({
       model: "gemini-flash-latest",
-      contents: PROMPTS.generateVocabQuizzes(targetWords, knownWordsList),
+      contents: PROMPTS.generateVocabQuizzes(targetWords, knownWords),
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: vocabQuizArraySchema,
+      },
+    }));
+    return JSON.parse(response.text);
+  }
+
+  static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
+    const response = await executeWithRetry(ai => ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: PROMPTS.generateMemorizeVocabQuizzes(targetWords),
       config: {
         responseMimeType: "application/json",
         responseSchema: vocabQuizArraySchema,

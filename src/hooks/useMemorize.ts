@@ -16,7 +16,7 @@ export function useMemorize(stats: StatsSummary) {
   const [sessionResults, setSessionResults] = useState<Word[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [cardStartTime, setCardStartTime] = useState<number>(0);
-  
+
   const [quizzes, setQuizzes] = useState<Record<string, VocabQuiz>>({});
   const [isGeneratingQuizzes, setIsGeneratingQuizzes] = useState(false);
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
@@ -37,7 +37,7 @@ export function useMemorize(stats: StatsSummary) {
           setQuizQueue(sessionData.quizQueue);
           setSwipeRatings(sessionData.swipeRatings as any);
           setCardStartTime(Date.now());
-          
+
           if (sessionData.phase === 'results') {
             setIsComplete(true);
           }
@@ -94,7 +94,7 @@ export function useMemorize(stats: StatsSummary) {
       if (sessionWordsList.length < 10) {
         const needed = 10 - sessionWordsList.length;
         const existingSnap = await getDocs(query(
-          wordsRef, 
+          wordsRef,
           orderBy('fsrs.due', 'asc'),
           limit(needed)
         ));
@@ -116,15 +116,15 @@ export function useMemorize(stats: StatsSummary) {
       // 3. 신규 학습 상한이 없는 경우
       const nowIso = new Date().toISOString();
       const overdueCheckSnap = await getDocs(query(
-        wordsRef, 
-        where('fsrs.due', '<=', nowIso), 
+        wordsRef,
+        where('fsrs.due', '<=', nowIso),
         limit(1)
       ));
-      
+
       if (!overdueCheckSnap.empty) {
         // 3.1.1. 기존 학습 단어에서 due가 낮은 순으로 10장을 가져온다.
         const existingSnap = await getDocs(query(
-          wordsRef, 
+          wordsRef,
           orderBy('fsrs.due', 'asc'),
           limit(10)
         ));
@@ -139,7 +139,7 @@ export function useMemorize(stats: StatsSummary) {
         if (sessionWordsList.length < 10) {
           const needed = 10 - sessionWordsList.length;
           const existingSnap = await getDocs(query(
-            wordsRef, 
+            wordsRef,
             orderBy('fsrs.due', 'asc'),
             limit(needed)
           ));
@@ -154,7 +154,7 @@ export function useMemorize(stats: StatsSummary) {
       ...w,
       failCount: 0
     }));
-    
+
     setSessionWords(newSessionWords);
     setQueue(newSessionWords);
     setSessionResults([]);
@@ -186,7 +186,7 @@ export function useMemorize(stats: StatsSummary) {
 
     setIsGeneratingQuizzes(true);
     const targetTerms = newSessionWords.map(w => w.term);
-    GeminiService.generateVocabQuizzes(targetTerms, [])
+    GeminiService.generateMemorizeVocabQuizzes(targetTerms)
       .then(async quizList => {
         const quizMap: Record<string, VocabQuiz> = {};
         quizList.forEach(q => {
@@ -244,7 +244,7 @@ export function useMemorize(stats: StatsSummary) {
 
       const nextQueue = queue.slice(1);
       setQueue(nextQueue);
-      
+
       if (nextQueue.length === 0) {
         setQuizQueue([...sessionWords]);
         setPhase('quiz');
@@ -275,7 +275,7 @@ export function useMemorize(stats: StatsSummary) {
         const minIndex = 1;
         const maxIndex = nextQueue.length;
         const randomIndex = Math.floor(Math.random() * (maxIndex - minIndex + 1)) + minIndex;
-        
+
         newQueue = [...nextQueue];
         newQueue.splice(randomIndex, 0, updatedWord);
       }
@@ -302,8 +302,8 @@ export function useMemorize(stats: StatsSummary) {
     const isMemorizedNow = updatedFsrs.state > 0;
     const isNewlyIntroduced = !currentWord.introducedAt;
 
-    const updatedWord = { 
-      ...currentWord, 
+    const updatedWord = {
+      ...currentWord,
       fsrs: updatedFsrs,
       memorized: updatedFsrs.state > 0,
       lastRating: finalLabel,
@@ -316,7 +316,7 @@ export function useMemorize(stats: StatsSummary) {
 
     const statsRef = doc(getDb(), 'users', USER_ID, 'stats', 'summary');
     const todayKey = getStudyDateKey();
-    
+
     const statsUpdates: any = {
       lastUpdated: Date.now(),
       [`dailyActivity.${todayKey}`]: increment(1)
@@ -352,7 +352,7 @@ export function useMemorize(stats: StatsSummary) {
     if (nextQuizQueue.length === 0) {
       setIsComplete(true);
       setPhase('results');
-      
+
       // Clear session and quizzes
       const sessionDocRef = doc(getDb(), 'users', USER_ID, 'sessions', 'memorize');
       deleteDoc(sessionDocRef).catch(err => console.error("Failed to delete session", err));
@@ -364,7 +364,7 @@ export function useMemorize(stats: StatsSummary) {
           snapshot.forEach(d => batch.delete(d.ref));
           return batch.commit();
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       await saveSession({
         quizQueue: nextQuizQueue
@@ -372,16 +372,16 @@ export function useMemorize(stats: StatsSummary) {
     }
   };
 
-  return { 
-    phase, 
-    queue, 
+  return {
+    phase,
+    queue,
     quizQueue,
     quizzes,
     isGeneratingQuizzes,
-    sessionResults, 
-    isComplete, 
+    sessionResults,
+    isComplete,
     isLoadingSession,
-    start, 
+    start,
     handleSwipe,
     handleQuizAnswer
   };

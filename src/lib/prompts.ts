@@ -1,13 +1,30 @@
 import { Problem } from "../types";
 
 export const PROMPTS = {
-  generateVocabQuizzes: (targetWords: string[], knownWordsList: string) => `
+  generateMemorizeVocabQuizzes: (targetWords: string[]) => `
 Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
 TARGET WORDS: ${targetWords.join(', ')}
 
-CRITICAL INSTRUCTION FOR OPTIONS:
-To make the quiz challenging, the incorrect options (distractors) MUST be selected from the following list of words the user already knows:
-KNOWN WORDS: ${knownWordsList}
+CRITICAL INSTRUCTIONS FOR OPTIONS:
+1. Each question's options MUST include the target word itself as exactly one of the four choices.
+2. The other three incorrect options (distractors) MUST be selected from the TARGET WORDS list, so the quiz includes other presented target words in the options.
+3. Across the full set of generated questions, distribute the correct answer positions as evenly as possible among a, b, c, and d. Avoid repeating the same answer key too often in a row.
+
+The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
+  `,
+
+  generateVocabQuizzes: (targetWords: string[], knownWords: string[]) => `
+Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
+TARGET WORDS: ${targetWords.join(', ')}
+KNOWN WORDS: ${knownWords.join(', ')}
+
+GENERAL QUIZ INSTRUCTIONS:
+1. Make each question natural, challenging, and suitable for general TOEIC vocabulary practice.
+2. The correct answer should be the target word that best fits the blank in the sentence.
+3. For incorrect options (distractors), include confusable words from KNOWN WORDS when appropriate (e.g., similar meaning, nuance, usage, part of speech, spelling, or collocation).
+4. If suitable words from KNOWN WORDS are not available, use plausible TOEIC-level distractors.
+5. Distribute the correct answer positions as evenly as possible among a, b, c, and d across the full set.
+6. Avoid repeating the same correct answer position too many times in a row.
 
 The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
   `,

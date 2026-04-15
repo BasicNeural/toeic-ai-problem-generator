@@ -63,9 +63,9 @@ export function useVocabQuiz() {
     setQuizzes({});
 
     const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
-    const q = query(wordsRef, where('memorized', '==', true), limit(20));
+    const q = query(wordsRef, where('memorized', '==', true), limit(50));
     const snapshot = await getDocs(q);
-    
+
     let memorizedWords = snapshot.docs.map(d => d.data() as Word).filter(w => w.lastRating !== 'Again');
     if (memorizedWords.length === 0) {
       setPhase('idle');
@@ -73,6 +73,7 @@ export function useVocabQuiz() {
     }
 
     const selectedWords = memorizedWords.sort(() => Math.random() - 0.5).slice(0, 10);
+    const unselectedWords = memorizedWords.filter(w => !selectedWords.includes(w));
     setQuizQueue(selectedWords);
     setSessionResults([]);
 
@@ -98,8 +99,9 @@ export function useVocabQuiz() {
       }
 
       const targetTerms = selectedWords.map(w => w.term);
-      const quizList = await GeminiService.generateVocabQuizzes(targetTerms, []);
-      
+      const knownWords = unselectedWords.map(w => w.term);
+      const quizList = await GeminiService.generateVocabQuizzes(targetTerms, knownWords);
+
       const quizMap: Record<string, VocabQuiz> = {};
       quizList.forEach(q => {
         const word = selectedWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
@@ -124,7 +126,7 @@ export function useVocabQuiz() {
       console.error("Failed to generate quizzes", err);
       setPhase('idle');
       const sessionDocRef = doc(getDb(), 'users', USER_ID, 'sessions', 'vocabQuiz');
-      deleteDoc(sessionDocRef).catch(() => {});
+      deleteDoc(sessionDocRef).catch(() => { });
     }
   };
 
@@ -139,8 +141,8 @@ export function useVocabQuiz() {
     const wasMemorizedBefore = currentWord.memorized;
     const isMemorizedNow = updatedFsrs.state > 0;
 
-    const updatedWord = { 
-      ...currentWord, 
+    const updatedWord = {
+      ...currentWord,
       fsrs: updatedFsrs,
       memorized: updatedFsrs.state > 0,
       lastRating: finalLabel
