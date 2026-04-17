@@ -18,8 +18,8 @@ import {
   ResponsiveContainer,
   Tooltip
 } from 'recharts';
-import { format, getDay, isToday } from 'date-fns';
-import { cn } from '../../lib/utils';
+import { format, getDay } from 'date-fns';
+import { cn, isToday } from '../../lib/utils';
 import { useAppContext } from '../../contexts/AppContext';
 import { useState, useEffect } from 'react';
 import { getStudyDateKey } from '../../lib/time';
