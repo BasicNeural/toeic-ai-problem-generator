@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "test:time": "tsx scripts/run-time-tests.ts",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },

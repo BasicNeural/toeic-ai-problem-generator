@@ -5,7 +5,7 @@ import { Rating as FSRSRating } from 'fsrs.js';
 import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, doc, getDocs, writeBatch, query, where, limit, increment, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
-import { format } from 'date-fns';
+import { getStudyDateKeyFromTime } from '../lib/time';
 
 export type VocabQuizPhase = 'idle' | 'loading' | 'quiz' | 'results';
 
@@ -154,11 +154,17 @@ export function useVocabQuiz() {
 
     // Update stats
     const statsRef = doc(getDb(), 'users', USER_ID, 'stats', 'summary');
-    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const completionTimeMs = Date.parse(updatedFsrs.last_review ?? new Date().toISOString());
+    const todayKey = getStudyDateKeyFromTime(Number.isFinite(completionTimeMs) ? completionTimeMs : Date.now());
     const statsUpdates: any = {
       lastUpdated: Date.now(),
       [`dailyActivity.${todayKey}`]: increment(1)
     };
+
+    // totalLearningDays: increment exactly once per study-day, on the first completion.
+    // Use currentWord.fsrs.last_review day-bucket, and rely on existing dailyActivity map.
+    // Note: unlike useMemorize, this hook doesn't receive current stats summary;
+    // so we don't attempt to increment totalLearningDays here to avoid over-count risk.
 
     if (wasMemorizedBefore && !isMemorizedNow) {
       statsUpdates.memorizedCount = increment(-1);

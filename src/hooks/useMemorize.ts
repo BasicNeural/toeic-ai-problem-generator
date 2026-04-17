@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Word, VocabQuiz, StatsSummary, MemorizeSession } from '../types';
 import { schedule, createInitialFSRS } from '../lib/fsrs';
 import { Rating as FSRSRating } from 'fsrs.js';
 import { getDb, handleFirestoreError, OperationType, USER_ID } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, getDocs, writeBatch, query, where, limit, orderBy, increment, getDoc, updateDoc } from 'firebase/firestore';
 import { GeminiService } from '../services/geminiService';
-import { getStudyDateKey } from '../lib/time';
+import { getStudyDateKey, getStudyDateKeyFromTime } from '../lib/time';
 
 export type MemorizePhase = 'flashcards' | 'quiz' | 'results';
 
@@ -22,6 +22,10 @@ export function useMemorize(stats: StatsSummary) {
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
   const [swipeRatings, setSwipeRatings] = useState<Record<string, { rating: FSRSRating, label: string }>>({});
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+
+  // Prevent double-counting daily first completion within a single app session.
+  // The source of truth is still Firestore (via dailyActivity map); this is only a client-side guard.
+  const dailyLearningCountedRef = useRef<Record<string, boolean>>({});
 
   // Load session or cache on mount
   useEffect(() => {
@@ -315,15 +319,24 @@ export function useMemorize(stats: StatsSummary) {
     batch.set(wordDoc, updatedWord, { merge: true });
 
     const statsRef = doc(getDb(), 'users', USER_ID, 'stats', 'summary');
-    const todayKey = getStudyDateKey();
+
+    // Use the word's *review time* (fsrs.last_review) as the completion timestamp.
+    // This keeps day-bucketing stable even if the device clock drifts.
+    const completionTimeMs = Date.parse(updatedFsrs.last_review ?? updatedWord.fsrs?.last_review ?? new Date().toISOString());
+    const completionKey = getStudyDateKeyFromTime(Number.isFinite(completionTimeMs) ? completionTimeMs : Date.now());
 
     const statsUpdates: any = {
       lastUpdated: Date.now(),
-      [`dailyActivity.${todayKey}`]: increment(1)
+      [`dailyActivity.${completionKey}`]: increment(1)
     };
+    const alreadyCountedToday = (stats.dailyActivity?.[completionKey] ?? 0) > 0;
+    if (!alreadyCountedToday && !dailyLearningCountedRef.current[completionKey]) {
+      statsUpdates.totalLearningDays = increment(1);
+      dailyLearningCountedRef.current[completionKey] = true;
+    }
 
     if (isNewlyIntroduced) {
-      statsUpdates[`newWordsToday.${todayKey}`] = increment(1);
+      statsUpdates[`newWordsToday.${completionKey}`] = increment(1);
     }
 
     if (!wasMemorizedBefore && isMemorizedNow) {
