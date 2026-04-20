@@ -4,6 +4,7 @@ import {
   BookOpen,
   CheckCircle2,
   Brain,
+  Link2,
   Sparkles,
   Flame,
   Settings,
@@ -31,7 +32,7 @@ interface HomeViewProps {
 
 export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps) {
   const navigate = useNavigate();
-  const { vocabulary, grammarStats, memorize, solve, vocabQuiz } = useAppContext();
+  const { vocabulary, grammarStats, memorize, conjunctionMemorize, solve, vocabQuiz } = useAppContext();
   const { stats: summary, monthlyActivity, getDueTotal: getDueTotal } = vocabulary;
   const stats = grammarStats.stats;
 
@@ -72,6 +73,11 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
   const handleStartVocabQuiz = () => {
     vocabQuiz.start();
     navigate('/vocab-quiz');
+  };
+
+  const handleStartConjunctionMemorize = () => {
+    conjunctionMemorize.start();
+    navigate('/conjunctions');
   };
 
   const handleStartSolve = () => {
@@ -179,6 +185,19 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
               "w-6 h-6 transition-colors",
               hasMemorizedWords ? "text-indigo-600 group-hover:text-white" : "text-slate-400"
             )} />
+          </div>
+        </button>
+
+        <button
+          onClick={handleStartConjunctionMemorize}
+          className="w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-lg">접속사 암기</h3>
+            <p className="text-sm text-slate-500">토익 핵심 접속사 하드코딩 목록</p>
+          </div>
+          <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center group-hover:bg-purple-600 transition-colors">
+            <Link2 className="w-6 h-6 text-purple-600 group-hover:text-white transition-colors" />
           </div>
         </button>
 

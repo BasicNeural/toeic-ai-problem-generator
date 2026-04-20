@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Toast } from './components/ui/Toast';
 import { HomeView } from './components/views/HomeView';
 import { MemorizeView } from './components/views/MemorizeView';
+import { ConjunctionMemorizeView } from './components/views/ConjunctionMemorizeView';
 import { SolveView } from './components/views/SolveView';
 import { VocabQuizView } from './components/views/VocabQuizView';
 import { SetupView } from './components/views/SetupView';
@@ -105,6 +106,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
             />
           } />
           <Route path="/memorize" element={<MemorizeView />} />
+          <Route path="/conjunctions" element={<ConjunctionMemorizeView />} />
           <Route path="/vocab-quiz" element={<VocabQuizView />} />
           <Route path="/solve" element={<SolveView />} />
         </Routes>

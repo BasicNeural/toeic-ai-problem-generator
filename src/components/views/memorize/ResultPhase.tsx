@@ -6,9 +6,10 @@ import { cn } from '../../../lib/utils';
 interface ResultPhaseProps {
   sessionResults: Word[];
   onBack: () => void;
+  itemNoun?: string;
 }
 
-export function ResultPhase({ sessionResults, onBack }: ResultPhaseProps) {
+export function ResultPhase({ sessionResults, onBack, itemNoun = '단어' }: ResultPhaseProps) {
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.9 }}
@@ -18,10 +19,10 @@ export function ResultPhase({ sessionResults, onBack }: ResultPhaseProps) {
       <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
         <Trophy className="w-10 h-10 text-emerald-600" />
       </div>
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-slate-900">학습 완료!</h2>
-        <p className="text-slate-500">{sessionResults.length}개의 단어를 복습했습니다.</p>
-      </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-slate-900">학습 완료!</h2>
+          <p className="text-slate-500">{sessionResults.length}개의 {itemNoun}를 복습했습니다.</p>
+        </div>
 
       <div className="w-full bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-50 bg-slate-50/50 text-center">

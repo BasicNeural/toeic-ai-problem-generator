@@ -139,6 +139,18 @@ export class GeminiService {
     return JSON.parse(response.text);
   }
 
+  static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {
+    const response = await executeWithRetry(ai => ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: PROMPTS.generateConjunctionQuizzes(targetConjunctions),
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: vocabQuizArraySchema,
+      },
+    }));
+    return JSON.parse(response.text);
+  }
+
   private static async generate(words: string[], targetGrammarCategories: string[]): Promise<Problem> {
     const wordList = words.length > 0 ? words.join(', ') : 'any TOEIC vocabulary';
     const targetListStr = targetGrammarCategories.length > 0

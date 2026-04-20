@@ -7,9 +7,10 @@ interface FlashcardPhaseProps {
   queue: Word[];
   onSwipe: (dir: 'left' | 'right') => void;
   onBack: () => void;
+  title?: string;
 }
 
-export function FlashcardPhase({ queue, onSwipe, onBack }: FlashcardPhaseProps) {
+export function FlashcardPhase({ queue, onSwipe, onBack, title = '단어 암기' }: FlashcardPhaseProps) {
   const currentWord = queue[0];
 
   return (
@@ -19,7 +20,7 @@ export function FlashcardPhase({ queue, onSwipe, onBack }: FlashcardPhaseProps) 
           <ChevronLeft className="w-6 h-6 text-slate-600" />
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">단어 암기</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{title}</span>
           <span className="text-sm font-bold text-slate-900">{queue.length}개 남음</span>
         </div>
         <div className="w-10" />

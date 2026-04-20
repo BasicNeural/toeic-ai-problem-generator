@@ -13,6 +13,25 @@ CRITICAL INSTRUCTIONS FOR OPTIONS:
 The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
   `,
 
+  generateConjunctionQuizzes: (targetConjunctions: string[]) => `
+Generate TOEIC Part 5 style CONJUNCTION questions for each of the following target conjunctions.
+TARGET CONJUNCTIONS: ${targetConjunctions.join(', ')}
+
+CRITICAL REQUIREMENTS:
+1. Each question MUST be a realistic TOEIC Part 5 business context sentence with exactly one blank (_______).
+2. The correct answer MUST be the target conjunction itself and MUST appear as exactly one option among a/b/c/d.
+3. The three incorrect options (distractors) MUST be other conjunctions chosen from TARGET CONJUNCTIONS.
+4. Ensure ONLY ONE option is grammatically and logically correct.
+5. Avoid trivial meaning-translation questions. Test grammatical function/logic (cause, contrast, condition, time, etc.).
+6. Distribute correct answers across a/b/c/d as evenly as possible.
+7. Provide:
+  - translation: Korean translation of the full sentence; the Korean phrase corresponding to the blank MUST be wrapped in <u> tags.
+  - explanation: Korean explanation focusing on why the correct conjunction fits and why key distractors don't.
+  - vocabulary: 2-4 key words from the sentence with Korean meanings.
+
+Output MUST be a JSON array.
+  `,
+
   generateVocabQuizzes: (targetWords: string[], knownWords: string[]) => `
 Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
 TARGET WORDS: ${targetWords.join(', ')}
