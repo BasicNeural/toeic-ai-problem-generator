@@ -131,7 +131,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             <span className="text-[10px] font-bold uppercase tracking-wider">외운 단어</span>
           </div>
           <div className="text-3xl font-bold text-slate-900">{summary.memorizedCount}</div>
-          <div className="text-xs text-slate-400">'Again' 평가 제외</div>
+          <div className="text-xs text-slate-400">{dueTotal > 0 ? `${dueTotal}개 복습 필요` : '암기 완료'}</div>
         </button>
       </div>
 
