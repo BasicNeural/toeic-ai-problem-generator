@@ -1,8 +1,10 @@
 import { Problem } from "../types";
 
 export const PROMPTS = {
-  generateSentenceTranslation: () => `
+  generateSentenceTranslation: (difficulty: number) => `
 Create one natural English sentence for Korean translation practice.
+
+Target difficulty: ${difficulty}
 
 Requirements:
 1. The sentence must be realistic, TOEIC-friendly, and suitable for intermediate learners.
@@ -10,7 +12,9 @@ Requirements:
 3. Provide every whitespace-separated token from the sentence, in order, with a Korean meaning for each token so the UI can reveal every word on tap.
 4. Make the sentence self-contained and avoid obscure idioms.
 5. The hint must be a short Korean hint.
-6. Return JSON only.
+6. Difficulty scale is fixed: 1 = very easy, 2 = easy, 3 = medium, 4 = hard, 5 = very hard.
+7. The returned difficulty MUST be exactly ${difficulty}. Do not choose a different number.
+8. Return JSON only.
 
 The JSON shape must be:
 {

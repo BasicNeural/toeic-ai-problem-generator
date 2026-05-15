@@ -6,6 +6,7 @@ import { useConjunctionMemorize } from '../hooks/useConjunctionMemorize';
 import { useSolve } from '../hooks/useSolve';
 import { useVocabQuiz } from '../hooks/useVocabQuiz';
 import { useSentenceTranslate } from '../hooks/useSentenceTranslate';
+import { useSentenceTranslateStats } from '../hooks/useSentenceTranslateStats';
 
 type AppContextType = {
   vocabulary: ReturnType<typeof useVocabulary>;
@@ -14,6 +15,7 @@ type AppContextType = {
   conjunctionMemorize: ReturnType<typeof useConjunctionMemorize>;
   solve: ReturnType<typeof useSolve>;
   vocabQuiz: ReturnType<typeof useVocabQuiz>;
+  sentenceTranslateStats: ReturnType<typeof useSentenceTranslateStats>;
   sentenceTranslate: ReturnType<typeof useSentenceTranslate>;
 };
 
@@ -27,10 +29,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const conjunctionMemorize = useConjunctionMemorize();
   const solve = useSolve(grammarStats.updateStat, grammarStats.stats);
   const vocabQuiz = useVocabQuiz();
-  const sentenceTranslate = useSentenceTranslate();
+  const sentenceTranslateStats = useSentenceTranslateStats();
+  const sentenceTranslate = useSentenceTranslate(sentenceTranslateStats);
 
   return (
-    <AppContext.Provider value={{ vocabulary, grammarStats, memorize, conjunctionMemorize, solve, vocabQuiz, sentenceTranslate }}>
+    <AppContext.Provider value={{ vocabulary, grammarStats, memorize, conjunctionMemorize, solve, vocabQuiz, sentenceTranslateStats, sentenceTranslate }}>
       {children}
     </AppContext.Provider>
   );

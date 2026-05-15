@@ -154,10 +154,11 @@ const sentenceTranslationVerificationSchema = {
 };
 
 export class GeminiService {
-  static async generateSentenceTranslation(): Promise<SentenceTranslationProblem> {
+  static async generateSentenceTranslation(difficulty: number): Promise<SentenceTranslationProblem> {
+    const targetDifficulty = Math.max(1, Math.min(5, Math.round(difficulty)));
     const response = await executeWithRetry(ai => ai.models.generateContent({
       model: "gemini-flash-latest",
-      contents: PROMPTS.generateSentenceTranslation(),
+      contents: PROMPTS.generateSentenceTranslation(targetDifficulty),
       config: {
         responseMimeType: "application/json",
         responseSchema: sentenceTranslationSchema,

@@ -14,6 +14,18 @@ export interface VocabQuizSession {
   updatedAt: number;
 }
 
+export interface SentenceTranslateSession {
+  phase: 'idle' | 'loading' | 'answering' | 'verifying' | 'result';
+  problemQueue: SentenceTranslationProblem[];
+  lastResult?: SentenceTranslationVerification;
+  lastUserAnswer?: string;
+  updatedAt: number;
+}
+
+export interface SentenceTranslateMastery {
+  score: number;
+}
+
 export interface Problem {
   id?: string;
   status?: 'pending' | 'solved';
@@ -39,6 +51,7 @@ export interface SentenceToken {
 }
 
 export interface SentenceTranslationProblem {
+  id?: string;
   sentence: string;
   translation: string;
   tokens: SentenceToken[];
