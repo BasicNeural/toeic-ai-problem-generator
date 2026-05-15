@@ -8,6 +8,7 @@ import { MemorizeView } from './components/views/MemorizeView';
 import { ConjunctionMemorizeView } from './components/views/ConjunctionMemorizeView';
 import { SolveView } from './components/views/SolveView';
 import { VocabQuizView } from './components/views/VocabQuizView';
+import { SentenceTranslateView } from './components/views/SentenceTranslateView';
 import { SetupView } from './components/views/SetupView';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { ConfirmModal } from './components/modals/ConfirmModal';
@@ -17,7 +18,7 @@ import { ConfigManager } from './lib/configManager';
 import { ApiKeyManager } from './lib/apiKeyManager';
 
 export default function App() {
-  const [isConfigured, setIsConfigured] = useState(() => 
+  const [isConfigured, setIsConfigured] = useState(() =>
     ConfigManager.isConfigured() && ApiKeyManager.getAllKeys().length > 0
   );
 
@@ -55,7 +56,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
 
   const { vocabulary } = useAppContext();
   const { uploadCSV, resetData } = vocabulary;
-  
+
   useEffect(() => {
     const handleRotation = () => {
       setToast({ message: 'API 한도 초과로 다음 키로 자동 전환되었습니다.', type: 'success' });
@@ -100,7 +101,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={
-            <HomeView 
+            <HomeView
               onOpenSettings={() => setShowSettings(true)}
               onOpenMemorizedList={() => setShowMemorizedList(true)}
             />
@@ -109,12 +110,13 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
           <Route path="/conjunctions" element={<ConjunctionMemorizeView />} />
           <Route path="/vocab-quiz" element={<VocabQuizView />} />
           <Route path="/solve" element={<SolveView />} />
+          <Route path="/sentence-translate" element={<SentenceTranslateView />} />
         </Routes>
       </AnimatePresence>
 
       <AnimatePresence>
         {showSettings && (
-          <SettingsModal 
+          <SettingsModal
             key="settings"
             onClose={() => setShowSettings(false)}
             onReset={() => setShowResetConfirm(true)}
@@ -124,7 +126,7 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
         )}
 
         {showResetConfirm && (
-          <ConfirmModal 
+          <ConfirmModal
             key="confirm-reset"
             title="모든 데이터 초기화"
             message="모든 단어와 학습 진행 상황이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
@@ -141,10 +143,10 @@ function TOEICApp({ onConfigReset }: TOEICAppProps) {
         )}
 
         {toast && (
-          <Toast 
-            message={toast.message} 
-            type={toast.type} 
-            onClose={() => setToast(null)} 
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
           />
         )}
       </AnimatePresence>

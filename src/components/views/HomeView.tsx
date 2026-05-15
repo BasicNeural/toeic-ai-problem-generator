@@ -8,7 +8,8 @@ import {
   Sparkles,
   Flame,
   Settings,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Languages
 } from 'lucide-react';
 import {
   Radar,
@@ -32,7 +33,7 @@ interface HomeViewProps {
 
 export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps) {
   const navigate = useNavigate();
-  const { vocabulary, grammarStats, memorize, conjunctionMemorize, solve, vocabQuiz } = useAppContext();
+  const { vocabulary, grammarStats, memorize, conjunctionMemorize, solve, vocabQuiz, sentenceTranslate } = useAppContext();
   const { stats: summary, monthlyActivity, getDueTotal: getDueTotal } = vocabulary;
   const stats = grammarStats.stats;
 
@@ -85,6 +86,11 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
     navigate('/solve');
   };
 
+  const handleStartSentenceTranslate = () => {
+    sentenceTranslate.generate();
+    navigate('/sentence-translate');
+  };
+
   const currentMonthStr = format(new Date(), 'yyyy년 M월');
   const firstDayOfMonth = monthlyActivity.length > 0 ? getDay(monthlyActivity[0].date) : 0;
   const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
@@ -131,7 +137,7 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             <span className="text-[10px] font-bold uppercase tracking-wider">외운 단어</span>
           </div>
           <div className="text-3xl font-bold text-slate-900">{summary.memorizedCount}</div>
-          <div className="text-xs text-slate-400">{dueTotal > 0 ? `${dueTotal}개 복습 필요` : '암기 완료'}</div>
+          <div className="text-xs text-slate-400">{dueTotal !== null && dueTotal > 0 ? `${dueTotal}개 복습 필요` : '암기 완료'}</div>
         </button>
       </div>
 
@@ -211,6 +217,19 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
           </div>
           <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
             <Sparkles className="w-6 h-6 text-emerald-600 group-hover:text-white transition-colors" />
+          </div>
+        </button>
+
+        <button
+          onClick={handleStartSentenceTranslate}
+          className="w-full group relative overflow-hidden bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-lg">문장 번역</h3>
+            <p className="text-sm text-slate-500">예제 문장을 번역하고 모범 답안 확인하기</p>
+          </div>
+          <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors">
+            <Languages className="w-6 h-6 text-cyan-600 group-hover:text-white transition-colors" />
           </div>
         </button>
       </div>

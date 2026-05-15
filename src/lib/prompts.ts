@@ -1,6 +1,48 @@
 import { Problem } from "../types";
 
 export const PROMPTS = {
+  generateSentenceTranslation: () => `
+Create one natural English sentence for Korean translation practice.
+
+Requirements:
+1. The sentence must be realistic, TOEIC-friendly, and suitable for intermediate learners.
+2. Provide a clear Korean model translation.
+3. Provide every whitespace-separated token from the sentence, in order, with a Korean meaning for each token so the UI can reveal every word on tap.
+4. Make the sentence self-contained and avoid obscure idioms.
+5. The hint must be a short Korean hint.
+6. Return JSON only.
+
+The JSON shape must be:
+{
+  "sentence": string,
+  "translation": string,
+  "tokens": [{ "word": string, "meaning": string }],
+  "difficulty": number,
+  "hint": string
+}
+  `,
+
+  verifySentenceTranslation: (sentence: string, modelAnswer: string, userAnswer: string) => `
+You are evaluating a Korean translation for an English sentence.
+
+English sentence: ${sentence}
+Model answer: ${modelAnswer}
+User answer: ${userAnswer}
+
+Judge whether the user answer preserves the meaning of the sentence and is natural Korean.
+Accept answers that are semantically equivalent even if wording differs.
+Reject answers that miss key meaning, tense, subject/object roles, negation, or important modifiers.
+Write feedback in Korean only.
+Keep the model answer in Korean only.
+
+Return JSON only with this shape:
+{
+  "isValid": boolean,
+  "feedback": string,
+  "modelAnswer": string
+}
+  `,
+
   generateMemorizeVocabQuizzes: (targetWords: string[]) => `
 Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
 TARGET WORDS: ${targetWords.join(', ')}

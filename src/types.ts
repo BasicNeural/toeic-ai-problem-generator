@@ -33,6 +33,25 @@ export interface Problem {
   comments?: string;
 }
 
+export interface SentenceToken {
+  word: string;
+  meaning: string;
+}
+
+export interface SentenceTranslationProblem {
+  sentence: string;
+  translation: string;
+  tokens: SentenceToken[];
+  difficulty: number;
+  hint?: string;
+}
+
+export interface SentenceTranslationVerification {
+  isValid: boolean;
+  feedback: string;
+  modelAnswer: string;
+}
+
 export enum Rating {
   Again = 0,
   Hard = 1,

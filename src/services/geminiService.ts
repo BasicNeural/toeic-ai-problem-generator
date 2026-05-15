@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Problem, AgentLog, WorkflowResult, VocabQuiz } from "../types";
+import { Problem, AgentLog, WorkflowResult, VocabQuiz, SentenceTranslationProblem, SentenceTranslationVerification } from "../types";
 import { ApiKeyManager } from "../lib/apiKeyManager";
 import { PROMPTS } from "../lib/prompts";
 
@@ -32,6 +32,13 @@ async function executeWithRetry<T>(operation: (ai: GoogleGenAI) => Promise<T>): 
     }
   }
   throw lastError;
+}
+
+function parseJsonResponse<T>(text: string | undefined): T {
+  if (!text) {
+    throw new Error('Gemini response body is empty');
+  }
+  return JSON.parse(text) as T;
 }
 
 const problemSchema = {
@@ -114,7 +121,67 @@ const vocabQuizArraySchema = {
   }
 };
 
+const sentenceTranslationSchema = {
+  type: Type.OBJECT,
+  properties: {
+    sentence: { type: Type.STRING },
+    translation: { type: Type.STRING },
+    tokens: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING },
+          meaning: { type: Type.STRING }
+        },
+        required: ["word", "meaning"]
+      }
+    },
+    difficulty: { type: Type.INTEGER },
+    hint: { type: Type.STRING },
+  },
+  required: ["sentence", "translation", "tokens", "difficulty"]
+};
+
+const sentenceTranslationVerificationSchema = {
+  type: Type.OBJECT,
+  properties: {
+    isValid: { type: Type.BOOLEAN },
+    feedback: { type: Type.STRING },
+    modelAnswer: { type: Type.STRING },
+  },
+  required: ["isValid", "feedback", "modelAnswer"]
+};
+
 export class GeminiService {
+  static async generateSentenceTranslation(): Promise<SentenceTranslationProblem> {
+    const response = await executeWithRetry(ai => ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: PROMPTS.generateSentenceTranslation(),
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: sentenceTranslationSchema,
+      },
+    }));
+    return parseJsonResponse<SentenceTranslationProblem>(response.text);
+  }
+
+  static async verifySentenceTranslation(
+    sentence: string,
+    modelAnswer: string,
+    userAnswer: string
+  ): Promise<SentenceTranslationVerification> {
+    const response = await executeWithRetry(ai => ai.models.generateContent({
+      model: "gemini-flash-lite-latest",
+      contents: PROMPTS.verifySentenceTranslation(sentence, modelAnswer, userAnswer),
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: sentenceTranslationVerificationSchema,
+      },
+    }));
+    return parseJsonResponse<SentenceTranslationVerification>(response.text);
+  }
+
   static async generateVocabQuizzes(targetWords: string[], knownWords: string[]): Promise<VocabQuiz[]> {
     const response = await executeWithRetry(ai => ai.models.generateContent({
       model: "gemini-flash-latest",
@@ -124,7 +191,7 @@ export class GeminiService {
         responseSchema: vocabQuizArraySchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<VocabQuiz[]>(response.text);
   }
 
   static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
@@ -136,7 +203,7 @@ export class GeminiService {
         responseSchema: vocabQuizArraySchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<VocabQuiz[]>(response.text);
   }
 
   static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {
@@ -148,7 +215,7 @@ export class GeminiService {
         responseSchema: vocabQuizArraySchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<VocabQuiz[]>(response.text);
   }
 
   private static async generate(words: string[], targetGrammarCategories: string[]): Promise<Problem> {
@@ -165,7 +232,7 @@ export class GeminiService {
         responseSchema: problemSchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<Problem>(response.text);
   }
 
   private static async verify(problem: Problem): Promise<{ isValid: boolean; feedback: string }> {
@@ -177,7 +244,7 @@ export class GeminiService {
         responseSchema: verificationSchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<{ isValid: boolean; feedback: string }>(response.text);
   }
 
   private static async correct(problem: Problem, feedback: string): Promise<Problem> {
@@ -189,7 +256,7 @@ export class GeminiService {
         responseSchema: problemSchema,
       },
     }));
-    return JSON.parse(response.text);
+    return parseJsonResponse<Problem>(response.text);
   }
 
   static async runWorkflow(
