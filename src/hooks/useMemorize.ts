@@ -84,7 +84,7 @@ export function useMemorize(stats: StatsSummary) {
 
     const todayKey = getStudyDateKey();
     const introducedToday = stats.newWordsToday[todayKey] || 0;
-    const hasAllowance = introducedToday < 10;
+    const hasAllowance = introducedToday < 20;
 
     const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
     let sessionWordsList: Word[] = [];
