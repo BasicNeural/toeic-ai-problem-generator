@@ -22,6 +22,7 @@ export function useMemorize(stats: StatsSummary) {
   const [quizQueue, setQuizQueue] = useState<Word[]>([]);
   const [swipeRatings, setSwipeRatings] = useState<Record<string, { rating: FSRSRating, label: string }>>({});
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const MAX_NEW_WORDS_PER_DAY = 20;
 
   // Prevent double-counting daily first completion within a single app session.
   // The source of truth is still Firestore (via dailyActivity map); this is only a client-side guard.
@@ -84,7 +85,7 @@ export function useMemorize(stats: StatsSummary) {
 
     const todayKey = getStudyDateKey();
     const introducedToday = stats.newWordsToday[todayKey] || 0;
-    const hasAllowance = introducedToday < 20;
+    const hasAllowance = introducedToday < MAX_NEW_WORDS_PER_DAY;
 
     const wordsRef = collection(getDb(), 'users', USER_ID, 'words');
     let sessionWordsList: Word[] = [];

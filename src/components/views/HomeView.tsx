@@ -39,13 +39,15 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
 
   const [dueTotal, setDueTotal] = useState<number | null>(null);
 
+  const MAX_NEW_WORDS_PER_DAY = 20;
+
   useEffect(() => {
     getDueTotal().then(setDueTotal);
   }, [summary.lastUpdated]);
 
   const todayKey = getStudyDateKey();
   const introducedToday = summary.newWordsToday?.[todayKey] || 0;
-  const remainingNewAllowance = Math.max(0, 10 - introducedToday);
+  const remainingNewAllowance = Math.max(0, MAX_NEW_WORDS_PER_DAY - introducedToday);
 
   const hasMemorizedWords = summary.memorizedCount > 0;
   const canStudy = summary.totalWords > 0;
