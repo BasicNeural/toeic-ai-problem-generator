@@ -53,6 +53,14 @@ function parseJsonResponse<T>(text: string | undefined): T {
   return JSON.parse(text) as T;
 }
 
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
 const problemSchema = {
   type: Type.OBJECT,
   properties: {
@@ -133,6 +141,32 @@ const vocabQuizArraySchema = {
   }
 };
 
+const simplifiedVocabQuizArraySchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      word: { type: Type.STRING, description: "The target vocabulary word" },
+      question: { type: Type.STRING, description: "A fill-in-the-blank sentence with '_______' for the target word" },
+      translation: { type: Type.STRING, description: "Korean translation of the question sentence. The translated word that corresponds to the blank MUST be wrapped in <u> tags" },
+      explanation: { type: Type.STRING, description: "Brief explanation in Korean" },
+      vocabulary: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING, description: "A key English word from the sentence" },
+            meaning: { type: Type.STRING, description: "Korean meaning of the word" },
+          },
+          required: ["word", "meaning"],
+        },
+        description: "2-4 key vocabulary words from the sentence with Korean meanings",
+      },
+    },
+    required: ["word", "question", "translation", "explanation", "vocabulary"],
+  }
+};
+
 const sentenceTranslationSchema = {
   type: Type.OBJECT,
   properties: {
@@ -196,39 +230,137 @@ export class GeminiService {
   }
 
   static async generateVocabQuizzes(targetWords: string[], knownWords: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
-      model,
-      contents: PROMPTS.generateVocabQuizzes(targetWords, knownWords),
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: vocabQuizArraySchema,
-      },
-    }));
-    return parseJsonResponse<VocabQuiz[]>(response.text);
+    const chunks = chunkArray(targetWords, 5);
+    const promises = chunks.map(async (chunk) => {
+      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+        model,
+        contents: PROMPTS.generateVocabQuizzes(chunk, knownWords),
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: vocabQuizArraySchema,
+        },
+      }));
+      return parseJsonResponse<VocabQuiz[]>(response.text);
+    });
+    
+    const results = await Promise.all(promises);
+    return results.flat();
   }
 
   static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
-      model,
-      contents: PROMPTS.generateMemorizeVocabQuizzes(targetWords),
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: vocabQuizArraySchema,
-      },
-    }));
-    return parseJsonResponse<VocabQuiz[]>(response.text);
+    const chunks = chunkArray(targetWords, 5);
+    
+    interface SimplifiedQuiz {
+      word: string;
+      question: string;
+      translation: string;
+      explanation: string;
+      vocabulary: { word: string; meaning: string }[];
+    }
+    
+    const promises = chunks.map(async (chunk) => {
+      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+        model,
+        contents: PROMPTS.generateMemorizeVocabQuizzes(chunk),
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: simplifiedVocabQuizArraySchema,
+        },
+      }));
+      
+      const rawQuizzes = parseJsonResponse<SimplifiedQuiz[]>(response.text);
+
+      return rawQuizzes.map(quiz => {
+        // Pick 3 distractors from the full targetWords to maximize variety
+        let distractors = targetWords.filter(w => w.toLowerCase() !== quiz.word.toLowerCase());
+        distractors = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
+        
+        const allOptions = [quiz.word, ...distractors];
+        while (allOptions.length < 4) {
+          allOptions.push("distractor_" + allOptions.length);
+        }
+        
+        const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
+        const answerIndex = shuffledOptions.findIndex(o => o === quiz.word);
+        const answerKey = ['a', 'b', 'c', 'd'][answerIndex] as "a" | "b" | "c" | "d";
+
+        return {
+          word: quiz.word,
+          question: quiz.question,
+          translation: quiz.translation,
+          explanation: quiz.explanation,
+          vocabulary: quiz.vocabulary,
+          options: {
+            a: shuffledOptions[0],
+            b: shuffledOptions[1],
+            c: shuffledOptions[2],
+            d: shuffledOptions[3],
+          },
+          answer: answerKey
+        };
+      });
+    });
+
+    const results = await Promise.all(promises);
+    return results.flat();
   }
 
   static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
-      model,
-      contents: PROMPTS.generateConjunctionQuizzes(targetConjunctions),
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: vocabQuizArraySchema,
-      },
-    }));
-    return parseJsonResponse<VocabQuiz[]>(response.text);
+    const chunks = chunkArray(targetConjunctions, 5);
+    
+    interface SimplifiedQuiz {
+      word: string;
+      question: string;
+      translation: string;
+      explanation: string;
+      vocabulary: { word: string; meaning: string }[];
+    }
+    
+    const promises = chunks.map(async (chunk) => {
+      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+        model,
+        contents: PROMPTS.generateConjunctionQuizzes(chunk),
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: simplifiedVocabQuizArraySchema,
+        },
+      }));
+      
+      const rawQuizzes = parseJsonResponse<SimplifiedQuiz[]>(response.text);
+
+      return rawQuizzes.map(quiz => {
+        // Pick 3 distractors from the full targetConjunctions
+        let distractors = targetConjunctions.filter(c => c.toLowerCase() !== quiz.word.toLowerCase());
+        distractors = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
+        
+        const allOptions = [quiz.word, ...distractors];
+        while (allOptions.length < 4) {
+          allOptions.push("distractor_" + allOptions.length);
+        }
+        
+        const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
+        const answerIndex = shuffledOptions.findIndex(o => o === quiz.word);
+        const answerKey = ['a', 'b', 'c', 'd'][answerIndex] as "a" | "b" | "c" | "d";
+
+        return {
+          word: quiz.word,
+          question: quiz.question,
+          translation: quiz.translation,
+          explanation: quiz.explanation,
+          vocabulary: quiz.vocabulary,
+          options: {
+            a: shuffledOptions[0],
+            b: shuffledOptions[1],
+            c: shuffledOptions[2],
+            d: shuffledOptions[3],
+          },
+          answer: answerKey
+        };
+      });
+    });
+
+    const results = await Promise.all(promises);
+    return results.flat();
   }
 
   private static async generate(words: string[], targetGrammarCategories: string[]): Promise<Problem> {
