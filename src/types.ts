@@ -52,6 +52,8 @@ export interface SentenceToken {
 
 export interface SentenceTranslationProblem {
   id?: string;
+  status?: 'pending' | 'solved';
+  createdAt?: number;
   sentence: string;
   translation: string;
   tokens: SentenceToken[];
