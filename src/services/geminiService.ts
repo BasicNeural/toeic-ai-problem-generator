@@ -7,14 +7,22 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey: ApiKeyManager.getCurrentKey() });
 }
 
-async function executeWithRetry<T>(operation: (ai: GoogleGenAI) => Promise<T>): Promise<T> {
-  const maxAttempts = Math.max(1, ApiKeyManager.getAllKeys().length);
+const FALLBACK_MODELS: Record<string, string> = {
+  "gemini-3-flash-preview": "gemini-2.5-flash"
+};
+
+async function executeWithRetry<T>(
+  defaultModel: string,
+  operation: (ai: GoogleGenAI, modelToUse: string) => Promise<T>
+): Promise<T> {
+  const maxAttempts = Math.max(3, ApiKeyManager.getAllKeys().length);
   let lastError: any;
+  let currentModel = defaultModel;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const ai = getAIClient();
-      const result = await operation(ai);
+      const result = await operation(ai, currentModel);
       ApiKeyManager.advance();
       return result;
     } catch (error: any) {
@@ -22,8 +30,12 @@ async function executeWithRetry<T>(operation: (ai: GoogleGenAI) => Promise<T>): 
       if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
         console.warn(`API Key rate limited. Rotating key... (Attempt ${attempt + 1}/${maxAttempts})`);
         ApiKeyManager.rotateKey();
-      } else if (error?.status === 503 || error?.message?.includes('503')) {
+      } else if (error?.status >= 500 || error?.message?.includes('503') || error?.message?.includes('502') || error?.message?.includes('500')) {
         console.warn(`Server unavailable. Waiting... (Attempt ${attempt + 1}/${maxAttempts})`);
+        if (FALLBACK_MODELS[currentModel]) {
+          console.warn(`Falling back from ${currentModel} to ${FALLBACK_MODELS[currentModel]}`);
+          currentModel = FALLBACK_MODELS[currentModel];
+        }
         await new Promise(resolve => setTimeout(resolve, 1000 * (2 ** (attempt + 1))));
       }
       else {
@@ -156,8 +168,8 @@ const sentenceTranslationVerificationSchema = {
 export class GeminiService {
   static async generateSentenceTranslation(difficulty: number): Promise<SentenceTranslationProblem> {
     const targetDifficulty = Math.max(1, Math.min(5, Math.round(difficulty)));
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.generateSentenceTranslation(targetDifficulty),
       config: {
         responseMimeType: "application/json",
@@ -172,8 +184,8 @@ export class GeminiService {
     modelAnswer: string,
     userAnswer: string
   ): Promise<SentenceTranslationVerification> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-flash-lite-latest",
+    const response = await executeWithRetry("gemini-flash-lite-latest", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.verifySentenceTranslation(sentence, modelAnswer, userAnswer),
       config: {
         responseMimeType: "application/json",
@@ -184,8 +196,8 @@ export class GeminiService {
   }
 
   static async generateVocabQuizzes(targetWords: string[], knownWords: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.generateVocabQuizzes(targetWords, knownWords),
       config: {
         responseMimeType: "application/json",
@@ -196,8 +208,8 @@ export class GeminiService {
   }
 
   static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.generateMemorizeVocabQuizzes(targetWords),
       config: {
         responseMimeType: "application/json",
@@ -208,8 +220,8 @@ export class GeminiService {
   }
 
   static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.generateConjunctionQuizzes(targetConjunctions),
       config: {
         responseMimeType: "application/json",
@@ -225,8 +237,8 @@ export class GeminiService {
       ? JSON.stringify(targetGrammarCategories)
       : '["시제", "분사", "관계사", "접속사", "전치사", "수동태", "가정법", "동명사"]';
 
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.generateGrammarProblem(wordList, targetListStr),
       config: {
         responseMimeType: "application/json",
@@ -237,8 +249,8 @@ export class GeminiService {
   }
 
   private static async verify(problem: Problem): Promise<{ isValid: boolean; feedback: string }> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.verifyProblem(problem),
       config: {
         responseMimeType: "application/json",
@@ -249,8 +261,8 @@ export class GeminiService {
   }
 
   private static async correct(problem: Problem, feedback: string): Promise<Problem> {
-    const response = await executeWithRetry(ai => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await executeWithRetry("gemini-3-flash-preview", (ai, model) => ai.models.generateContent({
+      model,
       contents: PROMPTS.correctProblem(problem, feedback),
       config: {
         responseMimeType: "application/json",
