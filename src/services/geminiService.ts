@@ -8,7 +8,7 @@ function getAIClient() {
 }
 
 const FALLBACK_MODELS: Record<string, string> = {
-  "gemini-3.5-flash": "gemini-2.5-flash"
+  "gemini-3.1-flash-lite": "gemini-2.5-flash"
 };
 
 async function executeWithRetry<T>(
@@ -202,7 +202,7 @@ const sentenceTranslationVerificationSchema = {
 export class GeminiService {
   static async generateSentenceTranslation(difficulty: number): Promise<SentenceTranslationProblem> {
     const targetDifficulty = Math.max(1, Math.min(5, Math.round(difficulty)));
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+    const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
       model,
       contents: PROMPTS.generateSentenceTranslation(targetDifficulty),
       config: {
@@ -232,7 +232,7 @@ export class GeminiService {
   static async generateVocabQuizzes(targetWords: string[], knownWords: string[]): Promise<VocabQuiz[]> {
     const chunks = chunkArray(targetWords, 5);
     const promises = chunks.map(async (chunk) => {
-      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+      const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
         model,
         contents: PROMPTS.generateVocabQuizzes(chunk, knownWords),
         config: {
@@ -242,14 +242,14 @@ export class GeminiService {
       }));
       return parseJsonResponse<VocabQuiz[]>(response.text);
     });
-    
+
     const results = await Promise.all(promises);
     return results.flat();
   }
 
   static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
     const chunks = chunkArray(targetWords, 5);
-    
+
     interface SimplifiedQuiz {
       word: string;
       question: string;
@@ -257,9 +257,9 @@ export class GeminiService {
       explanation: string;
       vocabulary: { word: string; meaning: string }[];
     }
-    
+
     const promises = chunks.map(async (chunk) => {
-      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+      const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
         model,
         contents: PROMPTS.generateMemorizeVocabQuizzes(chunk),
         config: {
@@ -267,19 +267,19 @@ export class GeminiService {
           responseSchema: simplifiedVocabQuizArraySchema,
         },
       }));
-      
+
       const rawQuizzes = parseJsonResponse<SimplifiedQuiz[]>(response.text);
 
       return rawQuizzes.map(quiz => {
         // Pick 3 distractors from the full targetWords to maximize variety
         let distractors = targetWords.filter(w => w.toLowerCase() !== quiz.word.toLowerCase());
         distractors = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
-        
+
         const allOptions = [quiz.word, ...distractors];
         while (allOptions.length < 4) {
           allOptions.push("distractor_" + allOptions.length);
         }
-        
+
         const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
         const answerIndex = shuffledOptions.findIndex(o => o === quiz.word);
         const answerKey = ['a', 'b', 'c', 'd'][answerIndex] as "a" | "b" | "c" | "d";
@@ -307,7 +307,7 @@ export class GeminiService {
 
   static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {
     const chunks = chunkArray(targetConjunctions, 5);
-    
+
     interface SimplifiedQuiz {
       word: string;
       question: string;
@@ -315,9 +315,9 @@ export class GeminiService {
       explanation: string;
       vocabulary: { word: string; meaning: string }[];
     }
-    
+
     const promises = chunks.map(async (chunk) => {
-      const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+      const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
         model,
         contents: PROMPTS.generateConjunctionQuizzes(chunk),
         config: {
@@ -325,19 +325,19 @@ export class GeminiService {
           responseSchema: simplifiedVocabQuizArraySchema,
         },
       }));
-      
+
       const rawQuizzes = parseJsonResponse<SimplifiedQuiz[]>(response.text);
 
       return rawQuizzes.map(quiz => {
         // Pick 3 distractors from the full targetConjunctions
         let distractors = targetConjunctions.filter(c => c.toLowerCase() !== quiz.word.toLowerCase());
         distractors = distractors.sort(() => Math.random() - 0.5).slice(0, 3);
-        
+
         const allOptions = [quiz.word, ...distractors];
         while (allOptions.length < 4) {
           allOptions.push("distractor_" + allOptions.length);
         }
-        
+
         const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
         const answerIndex = shuffledOptions.findIndex(o => o === quiz.word);
         const answerKey = ['a', 'b', 'c', 'd'][answerIndex] as "a" | "b" | "c" | "d";
@@ -369,7 +369,7 @@ export class GeminiService {
       ? JSON.stringify(targetGrammarCategories)
       : '["시제", "분사", "관계사", "접속사", "전치사", "수동태", "가정법", "동명사"]';
 
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+    const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
       model,
       contents: PROMPTS.generateGrammarProblem(wordList, targetListStr),
       config: {
@@ -381,7 +381,7 @@ export class GeminiService {
   }
 
   private static async verify(problem: Problem): Promise<{ isValid: boolean; feedback: string }> {
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+    const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
       model,
       contents: PROMPTS.verifyProblem(problem),
       config: {
@@ -393,7 +393,7 @@ export class GeminiService {
   }
 
   private static async correct(problem: Problem, feedback: string): Promise<Problem> {
-    const response = await executeWithRetry("gemini-3.5-flash", (ai, model) => ai.models.generateContent({
+    const response = await executeWithRetry("gemini-3.1-flash-lite", (ai, model) => ai.models.generateContent({
       model,
       contents: PROMPTS.correctProblem(problem, feedback),
       config: {
