@@ -48,14 +48,15 @@ Return JSON only with this shape:
   `,
 
   generateMemorizeVocabQuizzes: (targetWords: string[]) => `
-Generate an English vocabulary question sentence for each of the following target words:
+Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
 TARGET WORDS: ${targetWords.join(', ')}
 
-For each word, create a natural, TOEIC-style sentence with a blank (_______) where the target word should go.
-Provide the Korean translation of the sentence (wrap the translated word for the blank in <u> tags).
-Provide a brief Korean explanation of why the target word fits.
-Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field.
-Provide the output as a JSON array.
+CRITICAL INSTRUCTIONS FOR OPTIONS:
+1. Each question's options MUST include the target word itself as exactly one of the four choices.
+2. The other three incorrect options (distractors) MUST be selected from the TARGET WORDS list, so the quiz includes other presented target words in the options.
+3. Across the full set of generated questions, distribute the correct answer positions as evenly as possible among a, b, c, and d. Avoid repeating the same answer key too often in a row.
+
+The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
   `,
 
   generateConjunctionQuizzes: (targetConjunctions: string[]) => `
@@ -63,11 +64,16 @@ Generate TOEIC Part 5 style CONJUNCTION questions for each of the following targ
 TARGET CONJUNCTIONS: ${targetConjunctions.join(', ')}
 
 CRITICAL REQUIREMENTS:
-1. Each question MUST be a realistic TOEIC Part 5 business context sentence with exactly one blank (_______) where the target conjunction fits perfectly.
-2. Avoid trivial meaning-translation questions. Test grammatical function/logic (cause, contrast, condition, time, etc.).
-3. Provide a Korean translation of the full sentence; the Korean phrase corresponding to the blank MUST be wrapped in <u> tags.
-4. Provide a brief Korean explanation of why the target conjunction fits perfectly.
-5. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field.
+1. Each question MUST be a realistic TOEIC Part 5 business context sentence with exactly one blank (_______).
+2. The correct answer MUST be the target conjunction itself and MUST appear as exactly one option among a/b/c/d.
+3. The three incorrect options (distractors) MUST be other conjunctions chosen from TARGET CONJUNCTIONS.
+4. Ensure ONLY ONE option is grammatically and logically correct.
+5. Avoid trivial meaning-translation questions. Test grammatical function/logic (cause, contrast, condition, time, etc.).
+6. Distribute correct answers across a/b/c/d as evenly as possible.
+7. Provide:
+  - translation: Korean translation of the full sentence; the Korean phrase corresponding to the blank MUST be wrapped in <u> tags.
+  - explanation: Korean explanation focusing on why the correct conjunction fits and why key distractors don't.
+  - vocabulary: 2-4 key words from the sentence with Korean meanings.
 
 Output MUST be a JSON array.
   `,
