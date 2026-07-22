@@ -25,6 +25,7 @@ import { cn, isToday } from '../../lib/utils';
 import { useAppContext } from '../../contexts/AppContext';
 import { useState, useEffect } from 'react';
 import { getStudyDateKey } from '../../lib/time';
+import { APP_VERSION } from '../../lib/version';
 
 interface HomeViewProps {
   onOpenSettings: () => void;
@@ -109,7 +110,12 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
           <div className="inline-flex items-center justify-center p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200 mb-2">
             <BookOpen className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">토익 마스터</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-slate-900">토익 마스터</h1>
+            <span className="px-2.5 py-0.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-full">
+              v{APP_VERSION}
+            </span>
+          </div>
           <p className="text-slate-500 text-sm">AI 기반 단어 & 문법 학습</p>
         </div>
 
@@ -313,6 +319,10 @@ export function HomeView({ onOpenSettings, onOpenMemorizedList }: HomeViewProps)
             </RadarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div className="text-center pt-2 pb-4 text-xs font-medium text-slate-400">
+        v{APP_VERSION}
       </div>
     </motion.div>
   );
