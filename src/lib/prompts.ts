@@ -47,13 +47,24 @@ Return JSON only with this shape:
 }
   `,
 
-  generateMemorizeVocabQuizzes: (targetWords: string[]) => `
-Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words:
-TARGET WORDS: ${targetWords.join(', ')}
+  generateMemorizeVocabQuizzes: (wordsInfo: { term: string; recentQuestions?: string[] }[]) => `
+Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words.
+
+TARGET WORDS AND PREVIOUSLY GENERATED QUESTIONS:
+${wordsInfo.map(w => {
+  const previous = w.recentQuestions && w.recentQuestions.length > 0 
+    ? `\n  - Previous question(s): ${JSON.stringify(w.recentQuestions)}`
+    : '';
+  return `- Word: "${w.term}"${previous}`;
+}).join('\n')}
+
+CRITICAL INSTRUCTIONS FOR NOVELTY AND STYLES:
+1. For each target word, do NOT repeat or closely imitate the context, sentence structure, or topic of any listed PREVIOUSLY GENERATED QUESTIONS.
+2. Create distinct, creative, and different style TOEIC-friendly sentences for each question.
 
 CRITICAL INSTRUCTIONS FOR OPTIONS:
 1. Each question's options MUST include the target word itself as exactly one of the four choices.
-2. The other three incorrect options (distractors) MUST be selected from the TARGET WORDS list, so the quiz includes other presented target words in the options.
+2. The other three incorrect options (distractors) MUST be selected from the TARGET WORDS list (${wordsInfo.map(w => w.term).join(', ')}), so the quiz includes other presented target words in the options.
 3. Across the full set of generated questions, distribute the correct answer positions as evenly as possible among a, b, c, and d. Avoid repeating the same answer key too often in a row.
 
 The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.

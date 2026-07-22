@@ -116,6 +116,7 @@ export interface Word {
   // Session tracking
   failCount?: number;
   lastRating?: string;
+  recentQuestions?: string[];
 }
 
 export interface StatsSummary {

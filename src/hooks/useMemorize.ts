@@ -190,14 +190,25 @@ export function useMemorize(stats: StatsSummary) {
     }
 
     setIsGeneratingQuizzes(true);
-    const targetTerms = newSessionWords.map(w => w.term);
-    GeminiService.generateMemorizeVocabQuizzes(targetTerms)
+    const MAX_RECENT_QUESTIONS = 2;
+    const targetWordsInfo = newSessionWords.map(w => ({
+      term: w.term,
+      recentQuestions: w.recentQuestions || []
+    }));
+    GeminiService.generateMemorizeVocabQuizzes(targetWordsInfo)
       .then(async quizList => {
         const quizMap: Record<string, VocabQuiz> = {};
+        const wordQuestionUpdates: Record<string, string[]> = {};
+
         quizList.forEach(q => {
           const word = newSessionWords.find(w => w.term.toLowerCase() === q.word.toLowerCase());
           if (word) {
             quizMap[word.id] = q;
+
+            const existing = word.recentQuestions || [];
+            const updatedRecent = [...existing, q.question].slice(-MAX_RECENT_QUESTIONS);
+            word.recentQuestions = updatedRecent;
+            wordQuestionUpdates[word.id] = updatedRecent;
           }
         });
         setQuizzes(quizMap);
@@ -207,6 +218,10 @@ export function useMemorize(stats: StatsSummary) {
         oldSnapshot.forEach(d => batch.delete(d.ref));
         for (const [wordId, quiz] of Object.entries(quizMap)) {
           batch.set(doc(getDb(), 'users', USER_ID, 'memorizeQuizzes', wordId), quiz);
+        }
+        for (const [wordId, recentQuestions] of Object.entries(wordQuestionUpdates)) {
+          const wordDocRef = doc(getDb(), 'users', USER_ID, 'words', wordId);
+          batch.set(wordDocRef, { recentQuestions }, { merge: true });
         }
         batch.commit().catch(err => {
           handleFirestoreError(err, OperationType.WRITE, `users/${USER_ID}/memorizeQuizzes`);

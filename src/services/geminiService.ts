@@ -207,10 +207,10 @@ export class GeminiService {
     return parseJsonResponse<VocabQuiz[]>(response.text);
   }
 
-  static async generateMemorizeVocabQuizzes(targetWords: string[]): Promise<VocabQuiz[]> {
+  static async generateMemorizeVocabQuizzes(wordsInfo: { term: string; recentQuestions?: string[] }[]): Promise<VocabQuiz[]> {
     const response = await executeWithRetry("gemini-flash-lite-latest", (ai, model) => ai.models.generateContent({
       model,
-      contents: PROMPTS.generateMemorizeVocabQuizzes(targetWords),
+      contents: PROMPTS.generateMemorizeVocabQuizzes(wordsInfo),
       config: {
         responseMimeType: "application/json",
         responseSchema: vocabQuizArraySchema,
