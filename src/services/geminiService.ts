@@ -96,41 +96,43 @@ const verificationSchema = {
   required: ["isValid", "feedback"],
 };
 
-const vocabQuizArraySchema = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      word: { type: Type.STRING, description: "The target vocabulary word" },
-      question: { type: Type.STRING, description: "A fill-in-the-blank sentence with '_______' for the target word" },
-      translation: { type: Type.STRING, description: "Korean translation of the question sentence. The translated word that corresponds to the blank MUST be wrapped in <u> tags (e.g., '그는 어제 보고서를 <u>제출했다</u>.')" },
-      options: {
+const singleVocabQuizSchema = {
+  type: Type.OBJECT,
+  properties: {
+    word: { type: Type.STRING, description: "The target vocabulary word in its original base form" },
+    question: { type: Type.STRING, description: "A fill-in-the-blank sentence with '_______' for the target word" },
+    translation: { type: Type.STRING, description: "Korean translation of the question sentence. The translated word that corresponds to the blank MUST be wrapped in <u> tags (e.g., '그는 어제 보고서를 <u>제출했다</u>.')" },
+    options: {
+      type: Type.OBJECT,
+      properties: {
+        a: { type: Type.STRING },
+        b: { type: Type.STRING },
+        c: { type: Type.STRING },
+        d: { type: Type.STRING },
+      },
+      required: ["a", "b", "c", "d"],
+    },
+    answer: { type: Type.STRING, enum: ["a", "b", "c", "d"], description: "The correct option key" },
+    explanation: { type: Type.STRING, description: "Brief explanation in Korean" },
+    vocabulary: {
+      type: Type.ARRAY,
+      items: {
         type: Type.OBJECT,
         properties: {
-          a: { type: Type.STRING },
-          b: { type: Type.STRING },
-          c: { type: Type.STRING },
-          d: { type: Type.STRING },
+          word: { type: Type.STRING, description: "A key English word from the sentence" },
+          meaning: { type: Type.STRING, description: "Korean meaning of the word" },
         },
-        required: ["a", "b", "c", "d"],
+        required: ["word", "meaning"],
       },
-      answer: { type: Type.STRING, enum: ["a", "b", "c", "d"], description: "The correct option key" },
-      explanation: { type: Type.STRING, description: "Brief explanation in Korean" },
-      vocabulary: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            word: { type: Type.STRING, description: "A key English word from the sentence" },
-            meaning: { type: Type.STRING, description: "Korean meaning of the word" },
-          },
-          required: ["word", "meaning"],
-        },
-        description: "2-4 key vocabulary words from the sentence with Korean meanings",
-      },
+      description: "2-4 key vocabulary words from the sentence with Korean meanings",
     },
-    required: ["word", "question", "translation", "options", "answer", "explanation", "vocabulary"],
-  }
+  },
+  required: ["word", "question", "translation", "options", "answer", "explanation", "vocabulary"],
+};
+
+const vocabQuizArraySchema = {
+  type: Type.ARRAY,
+  items: singleVocabQuizSchema
 };
 
 const sentenceTranslationSchema = {
@@ -207,16 +209,28 @@ export class GeminiService {
     return parseJsonResponse<VocabQuiz[]>(response.text);
   }
 
-  static async generateMemorizeVocabQuizzes(wordsInfo: { term: string; recentQuestions?: string[] }[]): Promise<VocabQuiz[]> {
+  static async generateSingleMemorizeVocabQuiz(
+    target: { term: string; recentQuestions?: string[] },
+    allTargetWords: string[]
+  ): Promise<VocabQuiz> {
     const response = await executeWithRetry("gemini-flash-lite-latest", (ai, model) => ai.models.generateContent({
       model,
-      contents: PROMPTS.generateMemorizeVocabQuizzes(wordsInfo),
+      contents: PROMPTS.generateMemorizeVocabQuizSingle(target, allTargetWords),
       config: {
+        systemInstruction: PROMPTS.memorizeVocabQuizSystem,
         responseMimeType: "application/json",
-        responseSchema: vocabQuizArraySchema,
+        responseSchema: singleVocabQuizSchema,
       },
     }));
-    return parseJsonResponse<VocabQuiz[]>(response.text);
+    const quiz = parseJsonResponse<VocabQuiz>(response.text);
+    quiz.word = target.term;
+    return quiz;
+  }
+
+  static async generateMemorizeVocabQuizzes(wordsInfo: { term: string; recentQuestions?: string[] }[]): Promise<VocabQuiz[]> {
+    const allTerms = wordsInfo.map(w => w.term);
+    const quizPromises = wordsInfo.map(info => this.generateSingleMemorizeVocabQuiz(info, allTerms));
+    return Promise.all(quizPromises);
   }
 
   static async generateConjunctionQuizzes(targetConjunctions: string[]): Promise<VocabQuiz[]> {

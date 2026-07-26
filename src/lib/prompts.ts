@@ -47,28 +47,44 @@ Return JSON only with this shape:
 }
   `,
 
-  generateMemorizeVocabQuizzes: (wordsInfo: { term: string; recentQuestions?: string[] }[]) => `
-Generate a 4-option fill-in-the-blank English vocabulary question for each of the following target words.
+  memorizeVocabQuizSystem: `
+You are an expert TOEIC Part 5 question author.
+Your task is to generate a single 4-option fill-in-the-blank English vocabulary question for a specific TARGET WORD.
 
-TARGET WORDS AND PREVIOUSLY GENERATED QUESTIONS:
-${wordsInfo.map(w => {
-  const previous = w.recentQuestions && w.recentQuestions.length > 0 
-    ? `\n  - Previous question(s): ${JSON.stringify(w.recentQuestions)}`
-    : '';
-  return `- Word: "${w.term}"${previous}`;
-}).join('\n')}
+CRITICAL INSTRUCTIONS:
+1. QUESTION & NOVELTY:
+   - Create a realistic, high-quality TOEIC Part 5 sentence with exactly one blank (_______).
+   - Test the meaning, usage, or collocation of the target word.
+   - Do NOT repeat or closely imitate the context or sentence structure of any listed PREVIOUSLY GENERATED QUESTIONS.
 
-CRITICAL INSTRUCTIONS FOR NOVELTY AND STYLES:
-1. For each target word, do NOT repeat or closely imitate the context, sentence structure, or topic of any listed PREVIOUSLY GENERATED QUESTIONS.
-2. Create distinct, creative, and different style TOEIC-friendly sentences for each question.
+2. TENSE & FORM CONJUGATION (VERY IMPORTANT):
+   - You MAY change the tense or grammatical form of the target word if required by the sentence context (e.g. past tense, present participle, third-person singular, past participle).
+   - EXAMPLE: If target word is "submit", the correct option can be "submitted" or "submitting" depending on sentence context.
 
-CRITICAL INSTRUCTIONS FOR OPTIONS:
-1. Each question's options MUST include the target word itself as exactly one of the four choices.
-2. The other three incorrect options (distractors) MUST be selected from the TARGET WORDS list (${wordsInfo.map(w => w.term).join(', ')}), so the quiz includes other presented target words in the options.
-3. Across the full set of generated questions, distribute the correct answer positions as evenly as possible among a, b, c, and d. Avoid repeating the same answer key too often in a row.
+3. OPTIONS & DISTRACTORS CONJUGATION (VERY IMPORTANT):
+   - The correct option MUST be the target word (in its base or conjugated form).
+   - The other 3 incorrect options (distractors) MUST be selected from the provided ALL TARGET WORDS list.
+   - CRITICAL: If the target word is conjugated/inflected in the correct option (e.g., changed to past tense "submitted"), ALL 3 distractors MUST be conjugated/inflected into the EXACT SAME tense/grammatical form (e.g., if distractors are "approve", "deliver", "cancel", they MUST appear as "approved", "delivered", "cancelled").
+   - NEVER mix base forms with conjugated forms among the options. All 4 options must share the exact same part of speech and grammatical form.
 
-The questions should test the meaning or usage of the target word in a sentence. Include 2-4 key vocabulary words from the sentence with their Korean meanings in the 'vocabulary' field. Provide the output as a JSON array.
-  `,
+4. TRANSLATION & EXPLANATION:
+   - translation: Korean translation of the sentence. Wrap the Korean word/phrase corresponding to the blank in <u> tags (e.g., '그는 보고서를 <u>제출했다</u>.').
+   - explanation: Clear, concise explanation in Korean.
+   - vocabulary: Include 2-4 key words from the sentence with their Korean meanings.
+`,
+
+  generateMemorizeVocabQuizSingle: (
+    target: { term: string; recentQuestions?: string[] },
+    allTargetWords: string[]
+  ) => `
+Generate a single TOEIC vocabulary quiz for the target word.
+
+TARGET WORD: "${target.term}"
+ALL TARGET WORDS (for selecting distractors): ${JSON.stringify(allTargetWords)}
+${target.recentQuestions && target.recentQuestions.length > 0
+  ? `PREVIOUSLY GENERATED QUESTIONS (DO NOT REPEAT CONTEXT): ${JSON.stringify(target.recentQuestions)}`
+  : ''}
+`,
 
   generateConjunctionQuizzes: (targetConjunctions: string[]) => `
 Generate TOEIC Part 5 style CONJUNCTION questions for each of the following target conjunctions.
