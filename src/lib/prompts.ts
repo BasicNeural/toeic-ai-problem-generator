@@ -64,7 +64,7 @@ CRITICAL INSTRUCTIONS:
 3. OPTIONS & DISTRACTORS CONJUGATION (VERY IMPORTANT):
    - The correct option MUST be the target word (in its base or conjugated form).
    - The other 3 incorrect options (distractors) MUST be selected from the provided ALL TARGET WORDS list.
-   - CRITICAL: If the target word is conjugated/inflected in the correct option (e.g., changed to past tense "submitted"), ALL 3 distractors MUST be conjugated/inflected into the EXACT SAME tense/grammatical form (e.g., if distractors are "approve", "deliver", "cancel", they MUST appear as "approved", "delivered", "cancelled").
+   - CRITICAL: If the target word is conjugated/inflected in the correct option (e.g., changed to past tense "submitted"), ALL 3 distractors MUST be conjugated/inflected into the EXACT SAME tense/grammatical form if the option is a verb(e.g., if distractors are "approve", "deliver", "cancel", they MUST appear as "approved", "delivered", "cancelled").
    - NEVER mix base forms with conjugated forms among the options. All 4 options must share the exact same part of speech and grammatical form.
 
 4. TRANSLATION & EXPLANATION:
@@ -82,8 +82,8 @@ Generate a single TOEIC vocabulary quiz for the target word.
 TARGET WORD: "${target.term}"
 ALL TARGET WORDS (for selecting distractors): ${JSON.stringify(allTargetWords)}
 ${target.recentQuestions && target.recentQuestions.length > 0
-  ? `PREVIOUSLY GENERATED QUESTIONS (DO NOT REPEAT CONTEXT): ${JSON.stringify(target.recentQuestions)}`
-  : ''}
+      ? `PREVIOUSLY GENERATED QUESTIONS (DO NOT REPEAT CONTEXT): ${JSON.stringify(target.recentQuestions)}`
+      : ''}
 `,
 
   generateConjunctionQuizzes: (targetConjunctions: string[]) => `
